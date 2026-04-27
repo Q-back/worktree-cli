@@ -3,11 +3,12 @@ import { useState } from "react";
 import type { Worktree } from "../git/worktrees.ts";
 import { remove } from "../git/worktrees.ts";
 import { useFuzzy } from "./hooks/useFuzzy.ts";
+import { theme } from "./theme.ts";
 
 type ConfirmState = "none" | "confirm" | "confirm-force";
 
 interface WtItem {
-  label: string;
+  branch: string;
   path: string;
 }
 
@@ -16,9 +17,10 @@ interface Props {
   worktrees: Worktree[];
   onDone: () => void;
   onError: (msg: string) => void;
+  onToggleMode: () => void;
 }
 
-export function RemovePicker({ repoRoot, worktrees, onDone, onError }: Props) {
+export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMode }: Props) {
   const renderer = useRenderer();
   const [query, setQuery] = useState("");
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -27,11 +29,11 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError }: Props) {
   const items: WtItem[] = worktrees
     .filter((w) => !w.isMain)
     .map((w) => ({
-      label: `${w.branch ?? "(detached)"}  ${w.path.replace(repoRoot, "")}`,
+      branch: w.branch ?? "(detached)",
       path: w.path,
     }));
 
-  const filtered = useFuzzy(items, ["label"], query);
+  const filtered = useFuzzy(items, ["branch"], query);
   const safeIdx = Math.min(selectedIdx, Math.max(0, filtered.length - 1));
   const selected = filtered[safeIdx];
 
@@ -58,6 +60,10 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError }: Props) {
       return;
     }
 
+    if (key.name === "tab") {
+      onToggleMode();
+      return;
+    }
     if (key.name === "escape") {
       renderer.destroy();
       return;
@@ -85,31 +91,67 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError }: Props) {
 
   const confirmMsg =
     confirmState === "confirm-force"
-      ? `Worktree is dirty. Force remove ${selected?.path}? [y/n]`
-      : `Remove ${selected?.path}? [y/n]`;
+      ? `Worktree is dirty. Force remove ${selected?.path}?`
+      : `Remove ${selected?.path}?`;
 
   return (
     <box flexDirection="column" width="100%" height="100%">
-      <box borderStyle="single" padding={1}>
-        <text>Filter: [{query}_]</text>
+      <box flexDirection="row" paddingLeft={2} paddingTop={1}>
+        <text fg={theme.accent}>› </text>
+        <input
+          focused
+          value={query}
+          placeholder="type to filter…"
+          onInput={(v: string) => {
+            setQuery(v);
+            setSelectedIdx(0);
+          }}
+        />
       </box>
       {confirmState !== "none" ? (
-        <box padding={1}>
-          <text fg="#FF4444">{confirmMsg}</text>
+        <box flexDirection="column" paddingLeft={2} paddingTop={1}>
+          <text fg={theme.error}>{confirmMsg}</text>
+          <text fg={theme.muted}>[y] confirm   [n / esc] cancel</text>
         </box>
       ) : (
-        <box flexDirection="column" flexGrow={1} padding={1}>
+        <box flexDirection="column" flexGrow={1} paddingTop={1} paddingLeft={2}>
           {filtered.map((item, idx) => (
-            <text key={item.path} {...(idx === safeIdx ? { fg: "#FF6666" } : {})}>
-              {idx === safeIdx ? "▸ " : "  "}
-              {item.label}
-            </text>
+            <box key={item.path} flexDirection="row">
+              <text fg={theme.accent}>{idx === safeIdx ? "▸ " : "  "}</text>
+              <text fg={theme.accent}>{"◆ "}</text>
+              <text fg={idx === safeIdx ? theme.accent : theme.text}>{item.branch}</text>
+              <text>{"   "}</text>
+              <text fg={theme.muted}>{item.path.replace(repoRoot, "")}</text>
+            </box>
           ))}
-          {filtered.length === 0 && <text fg="#666666">No worktrees</text>}
+          {filtered.length === 0 && <text fg={theme.dim}>No worktrees</text>}
         </box>
       )}
-      <box borderStyle="single" padding={1}>
-        <text fg="#666666">↑↓ move ↵ remove esc cancel</text>
+      <text fg={theme.dim}>{"─".repeat(80)}</text>
+      <RemoveFooter />
+    </box>
+  );
+}
+
+function RemoveFooter() {
+  return (
+    <box flexDirection="column" paddingLeft={1} paddingBottom={1}>
+      <box flexDirection="row">
+        <text fg={theme.accent}>◆ </text>
+        <text fg={theme.muted}>worktree</text>
+      </box>
+      <box flexDirection="row">
+        <text fg={theme.text}>↑↓</text>
+        <text fg={theme.muted}> navigate</text>
+        <text fg={theme.dim}>{"  │  "}</text>
+        <text fg={theme.text}>↵</text>
+        <text fg={theme.muted}> remove</text>
+        <text fg={theme.dim}>{"  │  "}</text>
+        <text fg={theme.text}>⇥</text>
+        <text fg={theme.muted}> go mode</text>
+        <text fg={theme.dim}>{"  │  "}</text>
+        <text fg={theme.text}>esc</text>
+        <text fg={theme.muted}> cancel</text>
       </box>
     </box>
   );

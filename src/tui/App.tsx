@@ -1,9 +1,10 @@
-import { useKeyboard, useRenderer } from "@opentui/react";
+import { useRenderer } from "@opentui/react";
 import { writeFileSync } from "node:fs";
 import { useState } from "react";
 import type { Worktree } from "../git/worktrees.ts";
 import { GoPicker } from "./GoPicker.tsx";
 import { RemovePicker } from "./RemovePicker.tsx";
+import { theme } from "./theme.ts";
 
 type Mode = "go" | "remove";
 
@@ -12,17 +13,15 @@ interface Props {
   worktrees: Worktree[];
   localBranches: string[];
   outputFile: string;
+  currentBranch: string;
 }
 
-export function App({ repoRoot, worktrees, localBranches, outputFile }: Props) {
+export function App({ repoRoot, worktrees, localBranches, outputFile, currentBranch }: Props) {
   const renderer = useRenderer();
   const [mode, setMode] = useState<Mode>("go");
   const [error, setError] = useState<string | null>(null);
 
-  useKeyboard((key) => {
-    if (key.sequence === "g") setMode("go");
-    if (key.sequence === "r") setMode("remove");
-  });
+  const toggleMode = () => setMode((m) => (m === "go" ? "remove" : "go"));
 
   const handleDone = (path: string) => {
     writeFileSync(outputFile, `${path}\n`);
@@ -40,14 +39,22 @@ export function App({ repoRoot, worktrees, localBranches, outputFile }: Props) {
   };
 
   return (
-    <box flexDirection="column" width="100%" height="100%">
-      <box borderStyle="single" padding={1}>
-        <text {...(mode === "go" ? { fg: "#00FFFF" } : {})}>[g] Go </text>
-        <text {...(mode === "remove" ? { fg: "#00FFFF" } : {})}>[r] Remove</text>
+    <box flexDirection="column" width="100%" height="100%" borderStyle="single">
+      <box flexDirection="row" paddingLeft={1} paddingRight={1}>
+        <text fg={mode === "go" ? theme.accent : theme.dim}>
+          {mode === "go" ? "● " : "  "}Go
+        </text>
+        <text>{"    "}</text>
+        <text fg={mode === "remove" ? theme.accent : theme.dim}>
+          {mode === "remove" ? "● " : "  "}Remove
+        </text>
+        <box flexGrow={1} />
+        <text fg={theme.muted}>⇥ switch</text>
       </box>
+      <text fg={theme.dim}>{"─".repeat(80)}</text>
       {error && (
-        <box padding={1}>
-          <text fg="#FF4444">Error: {error}</text>
+        <box paddingLeft={1}>
+          <text fg={theme.error}>Error: {error}</text>
         </box>
       )}
       {mode === "go" ? (
@@ -55,8 +62,10 @@ export function App({ repoRoot, worktrees, localBranches, outputFile }: Props) {
           repoRoot={repoRoot}
           worktrees={worktrees}
           localBranches={localBranches}
+          currentBranch={currentBranch}
           onDone={handleDone}
           onError={handleError}
+          onToggleMode={toggleMode}
         />
       ) : (
         <RemovePicker
@@ -64,6 +73,7 @@ export function App({ repoRoot, worktrees, localBranches, outputFile }: Props) {
           worktrees={worktrees}
           onDone={handleRemoveDone}
           onError={handleError}
+          onToggleMode={toggleMode}
         />
       )}
     </box>

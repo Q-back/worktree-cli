@@ -40,7 +40,12 @@ async function main() {
   // non-interactive paths (which would otherwise pollute captured stdout
   // with terminal capability queries).
   const repoRoot = await findRepoRoot();
-  const [worktrees, localBranches] = await Promise.all([list(repoRoot), listLocal(repoRoot)]);
+  const { currentBranch } = await import("./git/repo.ts");
+  const [worktrees, localBranches, activeBranch] = await Promise.all([
+    list(repoRoot),
+    listLocal(repoRoot),
+    currentBranch(repoRoot),
+  ]);
 
   const { createCliRenderer } = await import("@opentui/core");
   const { createRoot } = await import("@opentui/react");
@@ -53,6 +58,7 @@ async function main() {
       worktrees={worktrees}
       localBranches={localBranches}
       outputFile={outputFile}
+      currentBranch={activeBranch}
     />,
   );
 }

@@ -1,15 +1,15 @@
 import { useKeyboard, useRenderer } from "@opentui/react";
 import { useState } from "react";
 import { branchExists, mergeBase } from "../git/branches.ts";
-import { currentBranch, defaultBaseBranch } from "../git/repo.ts";
+import { defaultBaseBranch } from "../git/repo.ts";
 import type { Worktree } from "../git/worktrees.ts";
 import { add, addNewBranch, pathFor } from "../git/worktrees.ts";
 import { useFuzzy } from "./hooks/useFuzzy.ts";
+import { theme } from "./theme.ts";
 
 type GoItemKind = "worktree" | "branch" | "create";
 
 interface GoItem {
-  label: string;
   kind: GoItemKind;
   wtPath: string;
   branch: string;
@@ -19,11 +19,21 @@ interface Props {
   repoRoot: string;
   worktrees: Worktree[];
   localBranches: string[];
+  currentBranch: string;
   onDone: (path: string) => void;
   onError: (msg: string) => void;
+  onToggleMode: () => void;
 }
 
-export function GoPicker({ repoRoot, worktrees, localBranches, onDone, onError }: Props) {
+export function GoPicker({
+  repoRoot,
+  worktrees,
+  localBranches,
+  currentBranch,
+  onDone,
+  onError,
+  onToggleMode,
+}: Props) {
   const renderer = useRenderer();
   const [query, setQuery] = useState("");
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -34,7 +44,6 @@ export function GoPicker({ repoRoot, worktrees, localBranches, onDone, onError }
     ...worktrees
       .filter((w) => !w.isMain && w.branch != null)
       .map((w) => ({
-        label: `${w.branch}  ${w.path.replace(repoRoot, "")}  ✓`,
         kind: "worktree" as GoItemKind,
         wtPath: w.path,
         branch: w.branch ?? "",
@@ -42,18 +51,16 @@ export function GoPicker({ repoRoot, worktrees, localBranches, onDone, onError }
     ...localBranches
       .filter((b) => !wtBranches.has(b))
       .map((b) => ({
-        label: b,
         kind: "branch" as GoItemKind,
         wtPath: pathFor(repoRoot, b),
         branch: b,
       })),
   ];
 
-  const matchedItems = useFuzzy(baseItems, ["label"], query);
+  const matchedItems = useFuzzy(baseItems, ["branch"], query);
 
   const showCreate = query.length > 0 && !baseItems.some((i) => i.branch === query);
   const createItem: GoItem = {
-    label: `${query}  (will create)`,
     kind: "create",
     wtPath: pathFor(repoRoot, query),
     branch: query,
@@ -65,6 +72,10 @@ export function GoPicker({ repoRoot, worktrees, localBranches, onDone, onError }
   const isPrintable = (seq: string): boolean => seq.length === 1 && seq >= " " && seq <= "~";
 
   useKeyboard(async (key) => {
+    if (key.name === "tab") {
+      onToggleMode();
+      return;
+    }
     if (key.name === "escape") {
       renderer.destroy();
       return;
@@ -81,7 +92,7 @@ export function GoPicker({ repoRoot, worktrees, localBranches, onDone, onError }
       const item = items[safeIdx];
       if (!item) return;
       try {
-        const resolved = await resolveItem(item, repoRoot);
+        const resolved = await resolveItem(item, repoRoot, currentBranch);
         renderer.destroy();
         onDone(resolved);
       } catch (e) {
@@ -100,26 +111,132 @@ export function GoPicker({ repoRoot, worktrees, localBranches, onDone, onError }
 
   return (
     <box flexDirection="column" width="100%" height="100%">
-      <box borderStyle="single" padding={1}>
-        <text>Branch: [{query}_]</text>
+      <box flexDirection="row" paddingLeft={2} paddingTop={1}>
+        <text fg={theme.accent}>› </text>
+        <input
+          focused
+          value={query}
+          placeholder="type to filter or create…"
+          onInput={(v: string) => {
+            setQuery(v);
+            setSelectedIdx(0);
+          }}
+        />
       </box>
-      <box flexDirection="column" flexGrow={1} padding={1}>
+      <box flexDirection="column" flexGrow={1} paddingTop={1} paddingLeft={2}>
         {items.map((item, idx) => (
-          <text key={item.branch} {...(idx === safeIdx ? { fg: "#00FFFF" } : {})}>
-            {idx === safeIdx ? "▸ " : "  "}
-            {item.label}
-          </text>
+          <GoRow
+            key={`${item.kind}:${item.branch}`}
+            item={item}
+            isSelected={idx === safeIdx}
+            isActive={item.branch === currentBranch}
+            repoRoot={repoRoot}
+          />
         ))}
-        {items.length === 0 && <text fg="#666666">No matches</text>}
+        {items.length === 0 && <text fg={theme.dim}>No matches</text>}
       </box>
-      <box borderStyle="single" padding={1}>
-        <text fg="#666666">↑↓ move ↵ go esc cancel</text>
+      <text fg={theme.dim}>{"─".repeat(80)}</text>
+      <GoFooter />
+    </box>
+  );
+}
+
+interface GoRowProps {
+  item: GoItem;
+  isSelected: boolean;
+  isActive: boolean;
+  repoRoot: string;
+}
+
+function GoRow({ item, isSelected, isActive, repoRoot }: GoRowProps) {
+  const cursor = isSelected ? "▸ " : "  ";
+  const cursorColor = theme.accent;
+
+  if (item.kind === "create") {
+    return (
+      <box flexDirection="row">
+        <text fg={cursorColor}>{cursor}</text>
+        <text fg={theme.accent}>+ </text>
+        <text fg={isSelected ? theme.accent : theme.text}>{item.branch}</text>
+        <text>{"   "}</text>
+        <text fg={theme.accent}>(will create)</text>
+      </box>
+    );
+  }
+
+  if (isActive) {
+    const relPath = item.wtPath.replace(repoRoot, "");
+    return (
+      <box flexDirection="row">
+        <text fg={cursorColor}>{cursor}</text>
+        <text fg={theme.accent}>{"● "}</text>
+        <text fg={theme.accent}>{item.branch}</text>
+        {item.kind === "worktree" && (
+          <>
+            <text>{"   "}</text>
+            <text fg={theme.muted}>{relPath}</text>
+          </>
+        )}
+      </box>
+    );
+  }
+
+  if (item.kind === "worktree") {
+    const relPath = item.wtPath.replace(repoRoot, "");
+    return (
+      <box flexDirection="row">
+        <text fg={cursorColor}>{cursor}</text>
+        <text fg={theme.accent}>{"◆ "}</text>
+        <text fg={isSelected ? theme.accent : theme.text}>{item.branch}</text>
+        <text>{"   "}</text>
+        <text fg={theme.muted}>{relPath}</text>
+      </box>
+    );
+  }
+
+  return (
+    <box flexDirection="row">
+      <text fg={cursorColor}>{cursor}</text>
+      <text fg={theme.dim}>{"○ "}</text>
+      <text fg={isSelected ? theme.accent : theme.text}>{item.branch}</text>
+    </box>
+  );
+}
+
+function GoFooter() {
+  return (
+    <box flexDirection="column" paddingLeft={1} paddingBottom={1}>
+      <box flexDirection="row">
+        <text fg={theme.accent}>● </text>
+        <text fg={theme.muted}>current</text>
+        <text fg={theme.dim}>{"   "}</text>
+        <text fg={theme.accent}>◆ </text>
+        <text fg={theme.muted}>worktree</text>
+        <text fg={theme.dim}>{"   "}</text>
+        <text fg={theme.dim}>○ </text>
+        <text fg={theme.muted}>branch</text>
+        <text fg={theme.dim}>{"   "}</text>
+        <text fg={theme.accent}>+ </text>
+        <text fg={theme.muted}>create</text>
+      </box>
+      <box flexDirection="row">
+        <text fg={theme.text}>↑↓</text>
+        <text fg={theme.muted}> navigate</text>
+        <text fg={theme.dim}>{"  │  "}</text>
+        <text fg={theme.text}>↵</text>
+        <text fg={theme.muted}> go</text>
+        <text fg={theme.dim}>{"  │  "}</text>
+        <text fg={theme.text}>⇥</text>
+        <text fg={theme.muted}> remove mode</text>
+        <text fg={theme.dim}>{"  │  "}</text>
+        <text fg={theme.text}>esc</text>
+        <text fg={theme.muted}> cancel</text>
       </box>
     </box>
   );
 }
 
-async function resolveItem(item: GoItem, repoRoot: string): Promise<string> {
+async function resolveItem(item: GoItem, repoRoot: string, head: string): Promise<string> {
   if (item.kind === "worktree") {
     return item.wtPath;
   }
@@ -131,7 +248,6 @@ async function resolveItem(item: GoItem, repoRoot: string): Promise<string> {
     return wtPath;
   }
 
-  const head = await currentBranch(repoRoot);
   const base = await defaultBaseBranch(repoRoot);
   const baseRef = head === base ? base : await mergeBase(repoRoot, "HEAD", base);
 
