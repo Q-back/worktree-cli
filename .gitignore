@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Bun
+.bun/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# App-specific
+.worktrees/
+
+# Claude Code
+.claude/settings.local.json
+
+# Work notes (local context, not for review)
+work_notes/context/
