@@ -3,7 +3,8 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 BIN_DIR="${HOME}/.local/bin"
-MARKER="# wt-worktree-cli"
+BEGIN_MARKER="# wt-worktree-cli"
+END_MARKER="# end wt-worktree-cli"
 
 echo "Installing wt from ${REPO_DIR}..."
 
@@ -21,12 +22,21 @@ echo "  ✓ Linked ${BIN_DIR}/wt-bin → ${REPO_DIR}/bin/wt-bin"
 read -r -d '' WT_BLOCK << 'SHELL_BLOCK' || true
 # wt-worktree-cli
 wt() {
+  local out_file
+  out_file="$(mktemp -t wt-out.XXXXXX)" || return $?
+  command wt-bin --output-file "$out_file" "$@"
+  local rc=$?
+  if [[ $rc -ne 0 ]]; then
+    rm -f "$out_file"
+    return $rc
+  fi
   local out
-  out="$(command wt-bin "$@")" || return $?
+  out="$(<"$out_file")"
+  rm -f "$out_file"
   if [[ -d "$out" ]]; then
     cd "$out"
-  else
-    [[ -n "$out" ]] && printf '%s\n' "$out"
+  elif [[ -n "$out" ]]; then
+    printf '%s\n' "$out"
   fi
 }
 # source completions
@@ -41,8 +51,20 @@ BASH_BLOCK="${WT_BLOCK/completion zsh/completion bash}"
 inject_into() {
   local rcfile="$1"
   local block="$2"
-  if [[ -f "${rcfile}" ]] && grep -qF "${MARKER}" "${rcfile}"; then
-    echo "  ✓ ${rcfile} already has wt function (skipping)"
+  touch "${rcfile}"
+  if grep -qF "${BEGIN_MARKER}" "${rcfile}"; then
+    # Strip the existing block between BEGIN_MARKER and END_MARKER (inclusive),
+    # then append the new one. Idempotent and self-upgrading.
+    local tmp
+    tmp="$(mktemp)"
+    awk -v begin="${BEGIN_MARKER}" -v end="${END_MARKER}" '
+      $0 ~ begin { skip=1; next }
+      skip && $0 ~ end { skip=0; next }
+      !skip { print }
+    ' "${rcfile}" > "${tmp}"
+    mv "${tmp}" "${rcfile}"
+    printf '\n%s\n' "${block}" >> "${rcfile}"
+    echo "  ✓ Updated wt function in ${rcfile}"
   else
     printf '\n%s\n' "${block}" >> "${rcfile}"
     echo "  ✓ Injected wt function into ${rcfile}"

@@ -1,12 +1,9 @@
-import { createCliRenderer } from "@opentui/core";
-import { createRoot } from "@opentui/react";
 import { printCompletion } from "./cli/completion.ts";
 import { createNonInteractive } from "./cli/createNonInteractive.ts";
 import { printHelp } from "./cli/help.ts";
 import { listLocal } from "./git/branches.ts";
 import { findRepoRoot } from "./git/repo.ts";
 import { list } from "./git/worktrees.ts";
-import { App } from "./tui/App.tsx";
 
 const args = process.argv.slice(2);
 
@@ -26,18 +23,39 @@ async function main() {
     return;
   }
 
-  if (args.length > 0 && args[0] != null) {
-    await createNonInteractive(args[0]);
+  // Parse --output-file <path>. When set, the resolved worktree path is written
+  // to that file instead of stdout — letting the TUI render freely on stdout
+  // without the wt() shell wrapper capturing terminal escape sequences via $().
+  const outputFileIdx = args.indexOf("--output-file");
+  const outputFile = outputFileIdx !== -1 ? (args[outputFileIdx + 1] ?? null) : null;
+  const positionalArgs =
+    outputFileIdx === -1
+      ? args
+      : args.filter((_, i) => i !== outputFileIdx && i !== outputFileIdx + 1);
+
+  if (positionalArgs.length > 0 && positionalArgs[0] != null) {
+    await createNonInteractive(positionalArgs[0], outputFile);
     return;
   }
 
-  // TUI mode
+  // TUI mode — lazy-load OpenTUI to avoid its native side effects on
+  // non-interactive paths (which would otherwise pollute captured stdout
+  // with terminal capability queries).
   const repoRoot = await findRepoRoot();
   const [worktrees, localBranches] = await Promise.all([list(repoRoot), listLocal(repoRoot)]);
 
+  const { createCliRenderer } = await import("@opentui/core");
+  const { createRoot } = await import("@opentui/react");
+  const { App } = await import("./tui/App.tsx");
+
   const renderer = await createCliRenderer({ exitOnCtrlC: true });
   createRoot(renderer).render(
-    <App repoRoot={repoRoot} worktrees={worktrees} localBranches={localBranches} />,
+    <App
+      repoRoot={repoRoot}
+      worktrees={worktrees}
+      localBranches={localBranches}
+      outputFile={outputFile}
+    />,
   );
 }
 

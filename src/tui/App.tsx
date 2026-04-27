@@ -1,4 +1,5 @@
 import { useKeyboard, useRenderer } from "@opentui/react";
+import { writeFileSync } from "node:fs";
 import { useState } from "react";
 import type { Worktree } from "../git/worktrees.ts";
 import { GoPicker } from "./GoPicker.tsx";
@@ -10,9 +11,10 @@ interface Props {
   repoRoot: string;
   worktrees: Worktree[];
   localBranches: string[];
+  outputFile: string | null;
 }
 
-export function App({ repoRoot, worktrees, localBranches }: Props) {
+export function App({ repoRoot, worktrees, localBranches, outputFile }: Props) {
   const renderer = useRenderer();
   const [mode, setMode] = useState<Mode>("go");
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +25,11 @@ export function App({ repoRoot, worktrees, localBranches }: Props) {
   });
 
   const handleDone = (path: string) => {
-    process.stdout.write(`${path}\n`);
+    if (outputFile) {
+      writeFileSync(outputFile, `${path}\n`);
+    } else {
+      process.stdout.write(`${path}\n`);
+    }
     renderer.destroy();
     process.exit(0);
   };

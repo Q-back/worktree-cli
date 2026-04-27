@@ -46,7 +46,7 @@ Worktrees live at `.worktrees/<last-segment-of-branch>` inside the repo root.
 ├──────────────────────────────────────────────────┤
 │ Branch:  [jpec_____________________]             │
 ├──────────────────────────────────────────────────┤
-│ ▸ jpeczke/auth-refactor  .worktrees/auth-…  ✓   │
+│ ▸ jpeczke/auth-refactor  .worktrees/auth-…  ✓    │
 │   jpeczke/old-feature                            │
 │   jpec  (will create)                            │
 └──────────────────────────────────────────────────┘
