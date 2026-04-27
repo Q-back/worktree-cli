@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
-exec bun run "$(dirname "$0")/../src/index.tsx" "$@"
+SCRIPT="$(readlink -f "$0" 2>/dev/null || realpath "$0")"
+exec bun run "$(dirname "$SCRIPT")/../src/index.tsx" "$@"
