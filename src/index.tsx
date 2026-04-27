@@ -23,15 +23,13 @@ async function main() {
     return;
   }
 
-  // Parse --output-file <path>. When set, the resolved worktree path is written
-  // to that file instead of stdout — letting the TUI render freely on stdout
-  // without the wt() shell wrapper capturing terminal escape sequences via $().
   const outputFileIdx = args.indexOf("--output-file");
-  const outputFile = outputFileIdx !== -1 ? (args[outputFileIdx + 1] ?? null) : null;
-  const positionalArgs =
-    outputFileIdx === -1
-      ? args
-      : args.filter((_, i) => i !== outputFileIdx && i !== outputFileIdx + 1);
+  const outputFile = args[outputFileIdx + 1];
+  if (!outputFile) {
+    process.stderr.write("wt: --output-file <path> is required\n");
+    process.exit(1);
+  }
+  const positionalArgs = args.filter((_, i) => i !== outputFileIdx && i !== outputFileIdx + 1);
 
   if (positionalArgs.length > 0 && positionalArgs[0] != null) {
     await createNonInteractive(positionalArgs[0], outputFile);

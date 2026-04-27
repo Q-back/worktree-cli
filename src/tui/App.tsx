@@ -11,7 +11,7 @@ interface Props {
   repoRoot: string;
   worktrees: Worktree[];
   localBranches: string[];
-  outputFile: string | null;
+  outputFile: string;
 }
 
 export function App({ repoRoot, worktrees, localBranches, outputFile }: Props) {
@@ -25,11 +25,7 @@ export function App({ repoRoot, worktrees, localBranches, outputFile }: Props) {
   });
 
   const handleDone = (path: string) => {
-    if (outputFile) {
-      writeFileSync(outputFile, `${path}\n`);
-    } else {
-      process.stdout.write(`${path}\n`);
-    }
+    writeFileSync(outputFile, `${path}\n`);
     renderer.destroy();
     process.exit(0);
   };

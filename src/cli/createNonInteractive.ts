@@ -3,19 +3,12 @@ import { branchExists, mergeBase } from "../git/branches.ts";
 import { currentBranch, defaultBaseBranch, findRepoRoot } from "../git/repo.ts";
 import { add, addNewBranch, isRegisteredWorktree, pathFor } from "../git/worktrees.ts";
 
-export async function createNonInteractive(
-  branch: string,
-  outputFile: string | null = null,
-): Promise<void> {
+export async function createNonInteractive(branch: string, outputFile: string): Promise<void> {
   const repoRoot = await findRepoRoot();
   const wtPath = pathFor(repoRoot, branch);
 
   const emit = (path: string): void => {
-    if (outputFile) {
-      writeFileSync(outputFile, `${path}\n`);
-    } else {
-      process.stdout.write(`${path}\n`);
-    }
+    writeFileSync(outputFile, `${path}\n`);
   };
 
   if (await isRegisteredWorktree(repoRoot, wtPath)) {
