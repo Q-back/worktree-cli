@@ -33,12 +33,21 @@ afterEach(() => {
 });
 
 describe("pathFor", () => {
-  it("uses last segment of branch", () => {
-    expect(pathFor(repoRoot, "feat/PROJ-123")).toBe(path.join(repoRoot, ".worktrees", "PROJ-123"));
+  it("uses last segment of branch in sibling container", () => {
+    const repoName = path.basename(repoRoot);
+    const container = path.join(repoRoot, "..", `${repoName}.worktrees`);
+    expect(pathFor(repoRoot, "feat/PROJ-123")).toBe(path.join(container, "PROJ-123"));
   });
 
   it("handles simple branch name", () => {
-    expect(pathFor(repoRoot, "main")).toBe(path.join(repoRoot, ".worktrees", "main"));
+    const repoName = path.basename(repoRoot);
+    const container = path.join(repoRoot, "..", `${repoName}.worktrees`);
+    expect(pathFor(repoRoot, "main")).toBe(path.join(container, "main"));
+  });
+
+  it("places worktree as sibling to repo directory", () => {
+    const wtPath = pathFor(repoRoot, "feature/foo");
+    expect(path.dirname(path.dirname(wtPath))).toBe(path.dirname(repoRoot));
   });
 });
 

@@ -16,9 +16,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   off the default branch tip directly. This avoids pulling in unrelated upstream commits when
   HEAD has diverged.
 
-- **`pathFor` convention**: worktree paths are always
-  `<repoRoot>/.worktrees/<last-segment-of-branch>`. Changing this breaks the idempotency check
-  in `createNonInteractive` and the `isRegisteredWorktree` lookup.
+- **`pathFor` convention**: worktree paths use the suffix-sibling pattern —
+  `<repoParent>/<repoName>.worktrees/<last-segment-of-branch>`. The container sits next to
+  the repo directory, not inside it. Changing this breaks the idempotency check in
+  `createNonInteractive` and the `isRegisteredWorktree` lookup.
 
 ## Linting
 

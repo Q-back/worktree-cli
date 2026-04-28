@@ -33,10 +33,18 @@ wt feat/PROJ-123-auth
 ```
 
 1. If a worktree already exists for that branch → prints its path (shell `cd`s).
-2. If the branch exists locally → creates `.worktrees/PROJ-123-auth`, checks it out.
+2. If the branch exists locally → creates `../my-app.worktrees/PROJ-123-auth`, checks it out.
 3. Otherwise → creates the branch off `merge-base(HEAD, main|master)`, makes the worktree.
 
-Worktrees live at `.worktrees/<last-segment-of-branch>` inside the repo root.
+Worktrees live **beside** the repo in a `<repo-name>.worktrees/` sibling directory:
+
+```
+/Projects/
+├── my-app/                 ← repo
+└── my-app.worktrees/       ← all worktrees
+    ├── PROJ-123-auth/
+    └── hotfix-css/
+```
 
 ### TUI
 
@@ -46,7 +54,7 @@ Worktrees live at `.worktrees/<last-segment-of-branch>` inside the repo root.
 ├──────────────────────────────────────────────────┤
 │ Branch:  [jpec_____________________]             │
 ├──────────────────────────────────────────────────┤
-│ ▸ jpeczke/auth-refactor  .worktrees/auth-…  ✓    │
+│ ▸ jpeczke/auth-refactor  ../my-app.worktrees/…   │
 │   jpeczke/old-feature                            │
 │   jpec  (will create)                            │
 └──────────────────────────────────────────────────┘
