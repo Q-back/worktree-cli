@@ -9,7 +9,9 @@ export interface Worktree {
 
 export function pathFor(repoRoot: string, branch: string): string {
   const lastSegment = branch.split("/").at(-1) ?? branch;
-  return path.join(repoRoot, ".worktrees", lastSegment);
+  const repoName = path.basename(repoRoot);
+  const siblingContainer = path.join(repoRoot, "..", `${repoName}.worktrees`);
+  return path.join(siblingContainer, lastSegment);
 }
 
 export async function list(repoRoot: string): Promise<Worktree[]> {

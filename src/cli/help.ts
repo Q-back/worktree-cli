@@ -9,8 +9,8 @@ USAGE
   wt completion bash   Print bash completion script
 
 WORKTREE PATHS
-  Worktrees are created at .worktrees/<last-segment-of-branch> inside the repo.
-  Example: wt feat/PROJ-123 → .worktrees/PROJ-123
+  Worktrees are created as siblings to the repo in a <repo-name>.worktrees/ directory.
+  Example: wt feat/PROJ-123 in my-app/ → ../my-app.worktrees/PROJ-123
 
 SHELL INTEGRATION
   The installer writes a shell function that automatically cd's you into

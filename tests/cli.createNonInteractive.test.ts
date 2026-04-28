@@ -15,7 +15,13 @@ async function git(args: string[], cwd = repoRoot) {
 }
 
 async function runWt(branch: string, cwd = repoRoot) {
-  return exec(["bun", "run", path.join(process.cwd(), "src/index.tsx"), branch], { cwd });
+  const outputFile = path.join(tmpDir, "wt-output.txt");
+  const result = await exec(
+    ["bun", "run", path.join(process.cwd(), "src/index.tsx"), branch, "--output-file", outputFile],
+    { cwd },
+  );
+  const stdout = fs.existsSync(outputFile) ? fs.readFileSync(outputFile, "utf8") : "";
+  return { ...result, stdout };
 }
 
 beforeEach(async () => {
