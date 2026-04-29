@@ -1,8 +1,8 @@
 import { useKeyboard, useRenderer } from "@opentui/react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Worktree } from "../git/worktrees.ts";
 import { remove } from "../git/worktrees.ts";
-import { useFuzzy } from "./hooks/useFuzzy.ts";
+import { fuzzyFilter } from "./hooks/useFuzzy.ts";
 import { theme } from "./theme.ts";
 
 type ConfirmState = "none" | "confirm" | "confirm-force";
@@ -22,22 +22,32 @@ interface Props {
 
 export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMode }: Props) {
   const renderer = useRenderer();
-  const [query, setQuery] = useState("");
-  const [selectedIdx, setSelectedIdx] = useState(0);
   const [confirmState, setConfirmState] = useState<ConfirmState>("none");
 
-  const items: WtItem[] = worktrees
+  const baseItems: WtItem[] = worktrees
     .filter((w) => !w.isMain)
     .map((w) => ({
       branch: w.branch ?? "(detached)",
       path: w.path,
     }));
 
-  const filtered = useFuzzy(items, ["branch"], query);
+  const queryRef = useRef("");
+  const [filtered, setFiltered] = useState<WtItem[]>(baseItems);
+  const [selectedIdx, setSelectedIdx] = useState(0);
+
   const safeIdx = Math.min(selectedIdx, Math.max(0, filtered.length - 1));
   const selected = filtered[safeIdx];
 
-  const isPrintable = (seq: string): boolean => seq.length === 1 && seq >= " " && seq <= "~";
+  const handleInput = useCallback(
+    (v: string) => {
+      queryRef.current = v;
+      setFiltered(fuzzyFilter(baseItems, ["branch"], v));
+      setSelectedIdx(0);
+    },
+    // baseItems is stable (derived from props that don't change after mount)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   useKeyboard(async (key) => {
     if (confirmState !== "none") {
@@ -78,14 +88,6 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
     }
     if (key.name === "return") {
       if (selected) setConfirmState("confirm");
-      return;
-    }
-    if (key.name === "backspace") {
-      setQuery((q) => q.slice(0, -1));
-      setSelectedIdx(0);
-    } else if (!key.ctrl && !key.meta && isPrintable(key.sequence)) {
-      setQuery((q) => q + key.sequence);
-      setSelectedIdx(0);
     }
   });
 
@@ -96,17 +98,9 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
 
   return (
     <box flexDirection="column" width="100%" height="100%">
-      <box flexDirection="row" paddingLeft={2} paddingTop={1}>
+      <box flexDirection="row" paddingLeft={2} paddingTop={1} height={2}>
         <text fg={theme.accent}>› </text>
-        <input
-          focused
-          value={query}
-          placeholder="type to filter…"
-          onInput={(v: string) => {
-            setQuery(v);
-            setSelectedIdx(0);
-          }}
-        />
+        <input focused placeholder="type to filter…" onInput={handleInput} />
       </box>
       {confirmState !== "none" ? (
         <box flexDirection="column" paddingLeft={2} paddingTop={1}>
