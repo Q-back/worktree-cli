@@ -37,7 +37,7 @@ export function GoPicker({
   const renderer = useRenderer();
 
   const wtBranches = new Set(worktrees.filter((w) => !w.isMain).map((w) => w.branch));
-  const baseItems: GoItem[] = [
+  const baseItemsRef = useRef<GoItem[]>([
     ...worktrees
       .filter((w) => !w.isMain && w.branch != null)
       .map((w) => ({
@@ -52,31 +52,26 @@ export function GoPicker({
         wtPath: pathFor(repoRoot, b),
         branch: b,
       })),
-  ];
+  ]);
+  const repoRootRef = useRef(repoRoot);
 
-  const queryRef = useRef("");
-  const [items, setItems] = useState<GoItem[]>(baseItems);
+  const [items, setItems] = useState<GoItem[]>(baseItemsRef.current);
   const [selectedIdx, setSelectedIdx] = useState(0);
 
   const safeIdx = Math.min(selectedIdx, Math.max(0, items.length - 1));
 
-  const handleInput = useCallback(
-    (v: string) => {
-      queryRef.current = v;
-      const matched = fuzzyFilter(baseItems, ["branch"], v);
-      const showCreate = v.length > 0 && !baseItems.some((i) => i.branch === v);
-      const createItem: GoItem = {
-        kind: "create",
-        wtPath: pathFor(repoRoot, v),
-        branch: v,
-      };
-      setItems(showCreate ? [...matched, createItem] : matched);
-      setSelectedIdx(0);
-    },
-    // baseItems and repoRoot are stable (derived from props that don't change after mount)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
+  const handleInput = useCallback((v: string) => {
+    const baseItems = baseItemsRef.current;
+    const matched = fuzzyFilter(baseItems, ["branch"], v);
+    const showCreate = v.length > 0 && !baseItems.some((i) => i.branch === v);
+    const createItem: GoItem = {
+      kind: "create",
+      wtPath: pathFor(repoRootRef.current, v),
+      branch: v,
+    };
+    setItems(showCreate ? [...matched, createItem] : matched);
+    setSelectedIdx(0);
+  }, []);
 
   useKeyboard(async (key) => {
     if (key.name === "tab") {

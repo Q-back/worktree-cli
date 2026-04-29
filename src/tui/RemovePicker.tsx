@@ -24,30 +24,25 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
   const renderer = useRenderer();
   const [confirmState, setConfirmState] = useState<ConfirmState>("none");
 
-  const baseItems: WtItem[] = worktrees
-    .filter((w) => !w.isMain)
-    .map((w) => ({
-      branch: w.branch ?? "(detached)",
-      path: w.path,
-    }));
+  const baseItemsRef = useRef<WtItem[]>(
+    worktrees
+      .filter((w) => !w.isMain)
+      .map((w) => ({
+        branch: w.branch ?? "(detached)",
+        path: w.path,
+      })),
+  );
 
-  const queryRef = useRef("");
-  const [filtered, setFiltered] = useState<WtItem[]>(baseItems);
+  const [filtered, setFiltered] = useState<WtItem[]>(baseItemsRef.current);
   const [selectedIdx, setSelectedIdx] = useState(0);
 
   const safeIdx = Math.min(selectedIdx, Math.max(0, filtered.length - 1));
   const selected = filtered[safeIdx];
 
-  const handleInput = useCallback(
-    (v: string) => {
-      queryRef.current = v;
-      setFiltered(fuzzyFilter(baseItems, ["branch"], v));
-      setSelectedIdx(0);
-    },
-    // baseItems is stable (derived from props that don't change after mount)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
+  const handleInput = useCallback((v: string) => {
+    setFiltered(fuzzyFilter(baseItemsRef.current, ["branch"], v));
+    setSelectedIdx(0);
+  }, []);
 
   useKeyboard(async (key) => {
     if (confirmState !== "none") {
@@ -105,7 +100,7 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
       {confirmState !== "none" ? (
         <box flexDirection="column" paddingLeft={2} paddingTop={1}>
           <text fg={theme.error}>{confirmMsg}</text>
-          <text fg={theme.muted}>[y] confirm   [n / esc] cancel</text>
+          <text fg={theme.muted}>[y] confirm [n / esc] cancel</text>
         </box>
       ) : (
         <box flexDirection="column" flexGrow={1} paddingTop={1} paddingLeft={2}>
