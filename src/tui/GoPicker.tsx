@@ -112,7 +112,7 @@ export function GoPicker({
     <box flexDirection="column" width="100%" height="100%">
       <box flexDirection="row" paddingLeft={2} paddingTop={1} height={2}>
         <text fg={theme.accent}>› </text>
-        <input focused placeholder="type to filter or create…" onInput={handleInput} />
+        <input focused width="100%" placeholder="type to filter or create…" onInput={handleInput} />
       </box>
       <box flexDirection="column" flexGrow={1} paddingTop={1} paddingLeft={2}>
         {items.map((item, idx) => (

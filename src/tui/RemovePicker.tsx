@@ -100,7 +100,7 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
     <box flexDirection="column" width="100%" height="100%">
       <box flexDirection="row" paddingLeft={2} paddingTop={1} height={2}>
         <text fg={theme.accent}>› </text>
-        <input focused placeholder="type to filter…" onInput={handleInput} />
+        <input focused width="100%" placeholder="type to filter…" onInput={handleInput} />
       </box>
       {confirmState !== "none" ? (
         <box flexDirection="column" paddingLeft={2} paddingTop={1}>
