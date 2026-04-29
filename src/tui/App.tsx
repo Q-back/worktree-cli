@@ -1,5 +1,5 @@
-import { useRenderer } from "@opentui/react";
 import { writeFileSync } from "node:fs";
+import { useRenderer } from "@opentui/react";
 import { useState } from "react";
 import type { Worktree } from "../git/worktrees.ts";
 import { GoPicker } from "./GoPicker.tsx";
@@ -41,9 +41,7 @@ export function App({ repoRoot, worktrees, localBranches, outputFile, currentBra
   return (
     <box flexDirection="column" width="100%" height="100%" borderStyle="single">
       <box flexDirection="row" paddingLeft={1} paddingRight={1}>
-        <text fg={mode === "go" ? theme.accent : theme.dim}>
-          {mode === "go" ? "● " : "  "}Go
-        </text>
+        <text fg={mode === "go" ? theme.accent : theme.dim}>{mode === "go" ? "● " : "  "}Go</text>
         <text>{"    "}</text>
         <text fg={mode === "remove" ? theme.accent : theme.dim}>
           {mode === "remove" ? "● " : "  "}Remove

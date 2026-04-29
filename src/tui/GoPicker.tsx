@@ -1,10 +1,10 @@
 import { useKeyboard, useRenderer } from "@opentui/react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { branchExists, mergeBase } from "../git/branches.ts";
 import { defaultBaseBranch } from "../git/repo.ts";
 import type { Worktree } from "../git/worktrees.ts";
 import { add, addNewBranch, pathFor } from "../git/worktrees.ts";
-import { useFuzzy } from "./hooks/useFuzzy.ts";
+import { fuzzyFilter } from "./hooks/useFuzzy.ts";
 import { theme } from "./theme.ts";
 
 type GoItemKind = "worktree" | "branch" | "create";
@@ -35,12 +35,9 @@ export function GoPicker({
   onToggleMode,
 }: Props) {
   const renderer = useRenderer();
-  const [query, setQuery] = useState("");
-  const [selectedIdx, setSelectedIdx] = useState(0);
 
   const wtBranches = new Set(worktrees.filter((w) => !w.isMain).map((w) => w.branch));
-
-  const baseItems: GoItem[] = [
+  const baseItemsRef = useRef<GoItem[]>([
     ...worktrees
       .filter((w) => !w.isMain && w.branch != null)
       .map((w) => ({
@@ -55,21 +52,26 @@ export function GoPicker({
         wtPath: pathFor(repoRoot, b),
         branch: b,
       })),
-  ];
+  ]);
+  const repoRootRef = useRef(repoRoot);
 
-  const matchedItems = useFuzzy(baseItems, ["branch"], query);
+  const [items, setItems] = useState<GoItem[]>(baseItemsRef.current);
+  const [selectedIdx, setSelectedIdx] = useState(0);
 
-  const showCreate = query.length > 0 && !baseItems.some((i) => i.branch === query);
-  const createItem: GoItem = {
-    kind: "create",
-    wtPath: pathFor(repoRoot, query),
-    branch: query,
-  };
-
-  const items: GoItem[] = showCreate ? [...matchedItems, createItem] : matchedItems;
   const safeIdx = Math.min(selectedIdx, Math.max(0, items.length - 1));
 
-  const isPrintable = (seq: string): boolean => seq.length === 1 && seq >= " " && seq <= "~";
+  const handleInput = useCallback((v: string) => {
+    const baseItems = baseItemsRef.current;
+    const matched = fuzzyFilter(baseItems, ["branch"], v);
+    const showCreate = v.length > 0 && !baseItems.some((i) => i.branch === v);
+    const createItem: GoItem = {
+      kind: "create",
+      wtPath: pathFor(repoRootRef.current, v),
+      branch: v,
+    };
+    setItems(showCreate ? [...matched, createItem] : matched);
+    setSelectedIdx(0);
+  }, []);
 
   useKeyboard(async (key) => {
     if (key.name === "tab") {
@@ -98,30 +100,14 @@ export function GoPicker({
       } catch (e) {
         onError(e instanceof Error ? e.message : String(e));
       }
-      return;
-    }
-    if (key.name === "backspace") {
-      setQuery((q) => q.slice(0, -1));
-      setSelectedIdx(0);
-    } else if (!key.ctrl && !key.meta && isPrintable(key.sequence)) {
-      setQuery((q) => q + key.sequence);
-      setSelectedIdx(0);
     }
   });
 
   return (
     <box flexDirection="column" width="100%" height="100%">
-      <box flexDirection="row" paddingLeft={2} paddingTop={1}>
+      <box flexDirection="row" paddingLeft={2} paddingTop={1} height={2}>
         <text fg={theme.accent}>› </text>
-        <input
-          focused
-          value={query}
-          placeholder="type to filter or create…"
-          onInput={(v: string) => {
-            setQuery(v);
-            setSelectedIdx(0);
-          }}
-        />
+        <input focused width="100%" placeholder="type to filter or create…" onInput={handleInput} />
       </box>
       <box flexDirection="column" flexGrow={1} paddingTop={1} paddingLeft={2}>
         {items.map((item, idx) => (
