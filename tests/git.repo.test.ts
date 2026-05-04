@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { exec } from "../src/lib/exec.ts";
 import { findRepoRoot } from "../src/git/repo.ts";
 import { add, pathFor } from "../src/git/worktrees.ts";
+import { exec } from "../src/lib/exec.ts";
 
 let tmpDir: string;
 let repoRoot: string;

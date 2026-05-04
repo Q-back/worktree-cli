@@ -106,8 +106,8 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
         <box flexDirection="column" flexGrow={1} paddingTop={1} paddingLeft={2}>
           {filtered.map((item, idx) => (
             <box key={item.path} flexDirection="row">
-              <text fg={theme.accent}>{idx === safeIdx ? "▸ " : "  "}</text>
-              <text fg={theme.accent}>{"◆ "}</text>
+              <text fg={theme.cursor}>{idx === safeIdx ? "▸ " : "  "}</text>
+              <text fg={theme.worktree}>{"● "}</text>
               <text fg={idx === safeIdx ? theme.accent : theme.text}>{item.branch}</text>
               <text>{"   "}</text>
               <text fg={theme.muted}>{item.path.replace(repoRoot, "")}</text>
@@ -126,7 +126,7 @@ function RemoveFooter() {
   return (
     <box flexDirection="column" paddingLeft={1} paddingBottom={1}>
       <box flexDirection="row">
-        <text fg={theme.accent}>◆ </text>
+        <text fg={theme.worktree}>● </text>
         <text fg={theme.muted}>worktree</text>
       </box>
       <box flexDirection="row">

@@ -41,10 +41,10 @@ export function App({ repoRoot, worktrees, localBranches, outputFile, currentBra
   return (
     <box flexDirection="column" width="100%" height="100%" borderStyle="single">
       <box flexDirection="row" paddingLeft={1} paddingRight={1}>
-        <text fg={mode === "go" ? theme.accent : theme.dim}>{mode === "go" ? "● " : "  "}Go</text>
+        <text fg={mode === "go" ? theme.accent : theme.dim}>{mode === "go" ? "▸ " : "  "}Go</text>
         <text>{"    "}</text>
         <text fg={mode === "remove" ? theme.accent : theme.dim}>
-          {mode === "remove" ? "● " : "  "}Remove
+          {mode === "remove" ? "▸ " : "  "}Remove
         </text>
         <box flexGrow={1} />
         <text fg={theme.muted}>⇥ switch</text>
