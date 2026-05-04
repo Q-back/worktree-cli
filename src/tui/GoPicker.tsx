@@ -56,7 +56,8 @@ export function GoPicker({
   const repoRootRef = useRef(repoRoot);
 
   const [items, setItems] = useState<GoItem[]>(baseItemsRef.current);
-  const [selectedIdx, setSelectedIdx] = useState(0);
+  const initialIdx = baseItemsRef.current.findIndex((item) => item.branch === currentBranch);
+  const [selectedIdx, setSelectedIdx] = useState(initialIdx >= 0 ? initialIdx : 0);
 
   const safeIdx = Math.min(selectedIdx, Math.max(0, items.length - 1));
 
@@ -136,16 +137,16 @@ interface GoRowProps {
 
 function GoRow({ item, isSelected, isActive, repoRoot }: GoRowProps) {
   const cursor = isSelected ? "▸ " : "  ";
-  const cursorColor = theme.accent;
+  const nameFg = isSelected ? theme.accent : theme.text;
 
   if (item.kind === "create") {
     return (
       <box flexDirection="row">
-        <text fg={cursorColor}>{cursor}</text>
-        <text fg={theme.accent}>+ </text>
-        <text fg={isSelected ? theme.accent : theme.text}>{item.branch}</text>
+        <text fg={theme.cursor}>{cursor}</text>
+        <text fg={theme.create}>+ </text>
+        <text fg={nameFg}>{item.branch}</text>
         <text>{"   "}</text>
-        <text fg={theme.accent}>(will create)</text>
+        <text fg={theme.create}>(will create)</text>
       </box>
     );
   }
@@ -154,13 +155,13 @@ function GoRow({ item, isSelected, isActive, repoRoot }: GoRowProps) {
     const relPath = item.wtPath.replace(repoRoot, "");
     return (
       <box flexDirection="row">
-        <text fg={cursorColor}>{cursor}</text>
-        <text fg={theme.accent}>{"● "}</text>
-        <text fg={theme.accent}>{item.branch}</text>
+        <text fg={theme.cursor}>{cursor}</text>
+        <text fg={theme.active}>{"◆ "}</text>
+        <text fg={theme.active}>{item.branch}</text>
         {item.kind === "worktree" && (
           <>
             <text>{"   "}</text>
-            <text fg={theme.muted}>{relPath}</text>
+            <text fg={theme.worktree}>{relPath}</text>
           </>
         )}
       </box>
@@ -171,9 +172,9 @@ function GoRow({ item, isSelected, isActive, repoRoot }: GoRowProps) {
     const relPath = item.wtPath.replace(repoRoot, "");
     return (
       <box flexDirection="row">
-        <text fg={cursorColor}>{cursor}</text>
-        <text fg={theme.accent}>{"◆ "}</text>
-        <text fg={isSelected ? theme.accent : theme.text}>{item.branch}</text>
+        <text fg={theme.cursor}>{cursor}</text>
+        <text fg={theme.worktree}>{"● "}</text>
+        <text fg={nameFg}>{item.branch}</text>
         <text>{"   "}</text>
         <text fg={theme.muted}>{relPath}</text>
       </box>
@@ -182,9 +183,9 @@ function GoRow({ item, isSelected, isActive, repoRoot }: GoRowProps) {
 
   return (
     <box flexDirection="row">
-      <text fg={cursorColor}>{cursor}</text>
-      <text fg={theme.dim}>{"○ "}</text>
-      <text fg={isSelected ? theme.accent : theme.text}>{item.branch}</text>
+      <text fg={theme.cursor}>{cursor}</text>
+      <text fg={theme.branch}>{"○ "}</text>
+      <text fg={nameFg}>{item.branch}</text>
     </box>
   );
 }
@@ -193,16 +194,16 @@ function GoFooter() {
   return (
     <box flexDirection="column" paddingLeft={1} paddingBottom={1}>
       <box flexDirection="row">
-        <text fg={theme.accent}>● </text>
+        <text fg={theme.active}>◆ </text>
         <text fg={theme.muted}>current</text>
         <text fg={theme.dim}>{"   "}</text>
-        <text fg={theme.accent}>◆ </text>
+        <text fg={theme.worktree}>● </text>
         <text fg={theme.muted}>worktree</text>
         <text fg={theme.dim}>{"   "}</text>
-        <text fg={theme.dim}>○ </text>
+        <text fg={theme.branch}>○ </text>
         <text fg={theme.muted}>branch</text>
         <text fg={theme.dim}>{"   "}</text>
-        <text fg={theme.accent}>+ </text>
+        <text fg={theme.create}>+ </text>
         <text fg={theme.muted}>create</text>
       </box>
       <box flexDirection="row">
