@@ -49,24 +49,34 @@ Worktrees live **beside** the repo in a `<repo-name>.worktrees/` sibling directo
 ### TUI
 
 ```
-┌─ wt ─────────────────────────────────────────────┐
-│  [g] Go   [r] Remove                             │
-├──────────────────────────────────────────────────┤
-│ Branch:  [jpec_____________________]             │
-├──────────────────────────────────────────────────┤
-│ ▸ jpeczke/auth-refactor  ../my-app.worktrees/…   │
-│   jpeczke/old-feature                            │
-│   jpec  (will create)                            │
+┌──────────────────────────────────────────────────┐
+│  ▸ Go      Remove                      ⇥ switch  │
+│──────────────────────────────────────────────────│
+│  › [type to filter or create…         ]          │
+│                                                  │
+│  ▸ ◆ jpeczke/auth-refactor   /../worktrees/…     │
+│    ● hotfix-css               /../worktrees/…    │
+│    ○ feat/other-branch                           │
+│    + new-branch-name          (will create)      │
+│──────────────────────────────────────────────────│
+│  ◆ current   ● worktree   ○ branch   + create   │
+│  ↑↓ navigate  │  ↵ go  │  ⇥ remove mode  │  esc │
 └──────────────────────────────────────────────────┘
-  ↑↓ move   ↵ go   esc cancel
 ```
 
-**Go mode** (`g`) — unified fuzzy picker across existing worktrees, local
-branches, and a free-text "create new" fallback. Press Enter to switch or
-create.
+The TUI opens in **Go mode** by default. Press `Tab` to toggle between modes.
 
-**Remove mode** (`r`) — fuzzy picker over existing worktrees. Enter prompts
-`y/n` confirmation; dirty worktrees get a second force-remove prompt.
+**Go mode** — unified fuzzy picker across existing worktrees, local branches,
+and a free-text "create new" fallback. Press Enter to switch or create.
+
+Item legend:
+- `◆` current branch
+- `●` existing worktree
+- `○` local branch (no worktree yet)
+- `+` free-text input (will create new branch + worktree)
+
+**Remove mode** — fuzzy picker over existing worktrees. Enter prompts `y/n`
+confirmation inline; dirty worktrees get a second force-remove prompt.
 
 ## Requirements
 
