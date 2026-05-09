@@ -37,10 +37,11 @@ export function GoPicker({
   const renderer = useRenderer();
 
   const mainWorktree = worktrees.find((w) => w.isMain);
+  const mainBranch = mainWorktree?.branch ?? null;
   const wtBranches = new Set(worktrees.filter((w) => !w.isMain).map((w) => w.branch));
   const baseItemsRef = useRef<GoItem[]>([
-    ...(mainWorktree
-      ? [{ kind: "main" as GoItemKind, wtPath: mainWorktree.path, branch: mainWorktree.branch ?? "" }]
+    ...(mainWorktree && mainBranch != null
+      ? [{ kind: "main" as GoItemKind, wtPath: mainWorktree.path, branch: mainBranch }]
       : []),
     ...worktrees
       .filter((w) => !w.isMain && w.branch != null)
@@ -50,7 +51,7 @@ export function GoPicker({
         branch: w.branch ?? "",
       })),
     ...localBranches
-      .filter((b) => !wtBranches.has(b))
+      .filter((b) => !wtBranches.has(b) && b !== mainBranch)
       .map((b) => ({
         kind: "branch" as GoItemKind,
         wtPath: pathFor(repoRoot, b),
@@ -67,19 +68,14 @@ export function GoPicker({
 
   const handleInput = useCallback((v: string) => {
     const baseItems = baseItemsRef.current;
-    const mainItem = baseItems.find((i) => i.kind === "main");
-    const nonMain = baseItems.filter((i) => i.kind !== "main");
-    const matched = fuzzyFilter(nonMain, ["branch"], v);
+    const matched = fuzzyFilter(baseItems, ["branch"], v);
     const showCreate = v.length > 0 && !baseItems.some((i) => i.branch === v);
     const createItem: GoItem = {
       kind: "create",
       wtPath: pathFor(repoRootRef.current, v),
       branch: v,
     };
-    setItems([
-      ...(mainItem ? [mainItem] : []),
-      ...(showCreate ? [...matched, createItem] : matched),
-    ]);
+    setItems(showCreate ? [...matched, createItem] : matched);
     setSelectedIdx(0);
   }, []);
 
@@ -152,6 +148,7 @@ function GoRow({ item, isSelected, isActive, repoRoot }: GoRowProps) {
     return (
       <box flexDirection="row">
         <text fg={theme.cursor}>{cursor}</text>
+        {isActive && <text fg={theme.active}>{"◆ "}</text>}
         <text fg={theme.home}>{"⌂ "}</text>
         <text fg={isActive ? theme.active : nameFg}>{item.branch}</text>
         <text>{"   "}</text>
