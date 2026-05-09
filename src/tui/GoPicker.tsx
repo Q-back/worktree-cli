@@ -7,7 +7,7 @@ import { add, addNewBranch, pathFor } from "../git/worktrees.ts";
 import { fuzzyFilter } from "./hooks/useFuzzy.ts";
 import { theme } from "./theme.ts";
 
-type GoItemKind = "worktree" | "branch" | "create";
+type GoItemKind = "worktree" | "branch" | "create" | "main";
 
 interface GoItem {
   kind: GoItemKind;
@@ -36,8 +36,13 @@ export function GoPicker({
 }: Props) {
   const renderer = useRenderer();
 
+  const mainWorktree = worktrees.find((w) => w.isMain);
+  const mainBranch = mainWorktree?.branch ?? null;
   const wtBranches = new Set(worktrees.filter((w) => !w.isMain).map((w) => w.branch));
   const baseItemsRef = useRef<GoItem[]>([
+    ...(mainWorktree && mainBranch != null
+      ? [{ kind: "main" as GoItemKind, wtPath: mainWorktree.path, branch: mainBranch }]
+      : []),
     ...worktrees
       .filter((w) => !w.isMain && w.branch != null)
       .map((w) => ({
@@ -46,7 +51,7 @@ export function GoPicker({
         branch: w.branch ?? "",
       })),
     ...localBranches
-      .filter((b) => !wtBranches.has(b))
+      .filter((b) => !wtBranches.has(b) && b !== mainBranch)
       .map((b) => ({
         kind: "branch" as GoItemKind,
         wtPath: pathFor(repoRoot, b),
@@ -139,6 +144,19 @@ function GoRow({ item, isSelected, isActive, repoRoot }: GoRowProps) {
   const cursor = isSelected ? "▸ " : "  ";
   const nameFg = isSelected ? theme.accent : theme.text;
 
+  if (item.kind === "main") {
+    return (
+      <box flexDirection="row">
+        <text fg={theme.cursor}>{cursor}</text>
+        {isActive && <text fg={theme.active}>{"◆ "}</text>}
+        <text fg={theme.home}>{"⌂ "}</text>
+        <text fg={isActive ? theme.active : nameFg}>{item.branch}</text>
+        <text>{"   "}</text>
+        <text fg={theme.muted}>{repoRoot}</text>
+      </box>
+    );
+  }
+
   if (item.kind === "create") {
     return (
       <box flexDirection="row">
@@ -194,6 +212,9 @@ function GoFooter() {
   return (
     <box flexDirection="column" paddingLeft={1} paddingBottom={1}>
       <box flexDirection="row">
+        <text fg={theme.home}>⌂ </text>
+        <text fg={theme.muted}>main repo</text>
+        <text fg={theme.dim}>{"   "}</text>
         <text fg={theme.active}>◆ </text>
         <text fg={theme.muted}>current</text>
         <text fg={theme.dim}>{"   "}</text>
@@ -224,7 +245,7 @@ function GoFooter() {
 }
 
 async function resolveItem(item: GoItem, repoRoot: string, head: string): Promise<string> {
-  if (item.kind === "worktree") {
+  if (item.kind === "main" || item.kind === "worktree") {
     return item.wtPath;
   }
 
