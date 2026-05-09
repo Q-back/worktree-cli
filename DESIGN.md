@@ -6,10 +6,11 @@ Visual and interaction design consistency reference for worktree-cli's TUI.
 
 ## Visual Vocabulary
 
-The TUI communicates four branch states to the user:
+The TUI communicates five branch states to the user:
 
 | State | Meaning |
 |---|---|
+| **Main** | The main repo directory — pinned at top, always visible; navigate here to go back |
 | **Current** | The branch HEAD points at in the main repo — _you are here_ |
 | **Worktree** | A branch that has an open worktree somewhere on disk |
 | **Branch** | A local branch with no open worktree — exists but dormant |
@@ -21,7 +22,8 @@ The TUI communicates four branch states to the user:
 
 | State | Icon | Rationale |
 |---|---|---|
-| Current (`isActive`) | `◆` | Diamond = home/pinned; unique shape signals the one active branch |
+| Main repo | `⌂` | House = home; always pinned at top of the list |
+| Current (`isActive`) | `◆` | Diamond = pinned; unique shape signals the one active branch |
 | Worktree (not active) | `●` | Filled circle = alive elsewhere |
 | Branch (no worktree) | `○` | Open circle = exists but dormant |
 | Create | `+` | Action glyph — something will be made |
@@ -45,6 +47,7 @@ The TUI communicates four branch states to the user:
 
 | Token | Hex | Applied to |
 |---|---|---|
+| `home` | `#A78BFA` | `kind=main` icon (`⌂`) |
 | `active` | `#67E8F9` | `isActive` branch icon and name |
 | `worktree` | `#FCD34D` | `kind=worktree` icon; worktree path when `isActive && kind=worktree` |
 | `branch` | `#57534E` | `kind=branch` icon |
@@ -55,6 +58,8 @@ The TUI communicates four branch states to the user:
 
 ### Intentionality
 
+- **Violet (`home`)** — soft, distinct. Reserved for the main repo row only; signals origin without
+  competing with active-branch cyan or action-element gold.
 - **Cyan (`active`)** — cool, rare, striking. Reserved exclusively for the single active branch so
   it pops immediately at a glance. Never reuse for anything else.
 - **Gold (`worktree`, `create`, `cursor`, `prompt`)** — warm, notable. Signals "something is open
@@ -68,6 +73,8 @@ The TUI communicates four branch states to the user:
 
 When multiple conditions apply to one row, priority is:
 
+0. `kind=main` → `⌂` in `theme.home` (violet). Name in `theme.active` if also `isActive`,
+   else `theme.text`. Path (repo root) in `theme.muted`.
 1. `isActive` → `◆` in `theme.active` (cyan). Name in `theme.active`.
    - If also `kind=worktree`: append path in `theme.worktree` (gold).
 2. `kind=worktree` (not active) → `●` in `theme.worktree`. Name in `theme.text`. Path in
@@ -120,7 +127,7 @@ override the row's icon or name color — the state identity must survive select
 Checklist when adding a new branch state:
 
 1. Add the state to `GoItemKind` in `GoPicker.tsx`.
-2. Choose an icon — it must be visually distinct from `◆ ● ○ +`.
+2. Choose an icon — it must be visually distinct from `⌂ ◆ ● ○ +`.
 3. Add a semantic color token to `theme.ts` with a comment explaining what it signals.
 4. Add a `GoRow` branch for the new kind, following priority rules above.
 5. Add the icon + label to `GoFooter` legend.

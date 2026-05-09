@@ -11,6 +11,7 @@ export const theme = {
   worktree: "#FCD34D", // kind=worktree (not active): gold = open elsewhere
   branch: "#57534E", // kind=branch (not active): dim = dormant
   create: "#FCD34D", // kind=create: gold = action
+  home: "#A78BFA", // kind=main: violet = repo origin / home
 
   // Semantic — chrome
   cursor: "#FCD34D", // arrow selection indicator
