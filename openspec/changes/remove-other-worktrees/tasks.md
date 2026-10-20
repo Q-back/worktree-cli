@@ -6,10 +6,10 @@ At each green boundary, inspect the actual diff and added-line count before comm
 
 ## 1. Commit: Add safe batch planning and execution
 
-- [ ] 1.1 Add current-worktree resolution and batch selection without changing `findRepoRoot()` semantics; verify with real Git tests from original/linked roots, nested directories, symlinked paths, detached HEAD, and worktrees outside the usual container, plus empty-batch and branch-preservation assertions.
-- [ ] 1.2 Add complete, non-destructive preflight inspection of tracked changes, all untracked files, ignored files, missing/uninspectable targets, and locks; verify tests leave every target intact and correctly identify all data-loss targets or block the batch.
-- [ ] 1.3 Add guarded sequential execution, requiring dirty-batch authorization and revalidating the full plan before deletion; verify real Git tests for clean/dirty success, absent authorization, changed target membership, newly dirty targets, and stop-on-error reporting of completed/failed/unattempted paths.
-- [ ] 1.4 Document the plan/execute safety contract alongside the helper and preserve existing `remove()`/`DIRTY` and original-repository resolution behavior; verify existing Git and CLI creation tests pass unchanged.
+- [x] 1.1 Add current-worktree resolution and batch selection without changing `findRepoRoot()` semantics; verify with real Git tests from original/linked roots, nested directories, symlinked paths, detached HEAD, and worktrees outside the usual container, plus empty-batch and branch-preservation assertions.
+- [x] 1.2 Add complete, non-destructive preflight inspection of tracked changes, all untracked files, ignored files, missing/uninspectable targets, and locks; verify tests leave every target intact and correctly identify all data-loss targets or block the batch.
+- [x] 1.3 Add guarded sequential execution, requiring dirty-batch authorization and revalidating the full plan before deletion; verify real Git tests for clean/dirty success, absent authorization, changed target membership, newly dirty targets, and stop-on-error reporting of completed/failed/unattempted paths.
+- [x] 1.4 Document the plan/execute safety contract alongside the helper and preserve existing `remove()`/`DIRTY` and original-repository resolution behavior; verify existing Git and CLI creation tests pass unchanged.
 - [ ] 1.5 Run `bun test`, `bun run typecheck`, and `bunx biome check src tests`; inspect the scoped diff and added-line count, commit this group, and complete the review/fix/re-review cycle described above with passing checks.
 
 ## 2. Commit: Expose confirmed bulk removal in the CLI

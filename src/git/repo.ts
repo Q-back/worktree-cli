@@ -1,3 +1,4 @@
+import { realpath } from "node:fs/promises";
 import * as path from "node:path";
 import { exec, execOrThrow } from "../lib/exec.ts";
 
@@ -10,6 +11,11 @@ export async function findRepoRoot(cwd = process.cwd()): Promise<string> {
   // from the main worktree; resolve then strip /.git to get the main repo root
   const gitDir = path.resolve(cwd, result.stdout);
   return gitDir.replace(/[/\\]\.git$/, "");
+}
+
+/** Resolve the invocation checkout, unlike findRepoRoot which returns the original repository. */
+export async function findCurrentWorktree(cwd = process.cwd()): Promise<string> {
+  return realpath(await execOrThrow(["git", "rev-parse", "--show-toplevel"], { cwd }));
 }
 
 export async function currentBranch(repoRoot: string): Promise<string> {
