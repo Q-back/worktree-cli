@@ -28,7 +28,7 @@ CLI review disposition: the user explicitly accepted terminal type-ahead as an e
 - [x] 3.2 Add accessible target previews and red removal/data-loss warning states, with one confirmation per stage and no deletion before both required approvals; verify rendered output and state transitions for clean and multiple-dirty-target batches, cancellation at either stage, empty batches, and inspection errors.
 - [x] 3.3 Suspend filtering and duplicate actions while the batch flow is active, reset authorization on cancellation, and report removal failures accurately; verify input-routing/re-entry tests and at least one TUI-to-real-Git integration path demonstrate correct removal and no accidental repeated execution.
 - [x] 3.4 Update the Remove footer and README with `ctrl+x remove all others` and its batch-wide scope; verify the hint is rendered and manually smoke-test the shortcut, long target previews, warnings, cancellation, and unchanged Go/Remove navigation.
-- [ ] 3.5 Run `bun test`, `bun run typecheck`, `bunx biome check src tests`, and `openspec validate remove-other-worktrees --strict`; inspect the scoped diff and added-line count, commit this group, and complete its review/fix/re-review cycle with passing checks.
+- [x] 3.5 Run `bun test`, `bun run typecheck`, `bunx biome check src tests`, and `openspec validate remove-other-worktrees --strict`; inspect the scoped diff and added-line count, commit this group, and complete its review/fix/re-review cycle with passing checks.
 
 ## Follow-ups outside this change
 
