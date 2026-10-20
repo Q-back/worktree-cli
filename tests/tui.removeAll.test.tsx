@@ -226,6 +226,52 @@ describe("batch input routing and execution", () => {
     expect(completed).toBe(0);
   });
 
+  it.each([
+    "removal",
+    "data-loss",
+  ])("invalidates %s approval before cancellation renders", async (stage) => {
+    const file = path.join(beta, "new-data");
+    fs.writeFileSync(file, "keep me");
+    await mount();
+    await key("x", { ctrl: true });
+    await preview();
+    if (stage === "data-loss") await key("y");
+    await act(() => {
+      ui?.mockInput.pressKey("n");
+      ui?.mockInput.pressKey("y");
+      ui?.mockInput.pressKey("y");
+    });
+    await expect(until(() => completed > 0)).rejects.toThrow("TUI condition timed out");
+    expect(fs.existsSync(alpha)).toBe(true);
+    expect(fs.readFileSync(file, "utf8")).toBe("keep me");
+    expect(frame()).toContain("type to filter");
+  });
+
+  it("starts a fresh plan when cancellation and restart share a render turn", async () => {
+    const file = path.join(beta, "new-data");
+    fs.writeFileSync(file, "keep me");
+    await mount();
+    await key("x", { ctrl: true });
+    await preview();
+    await key("y");
+    expect(frame()).toContain("Discard data across");
+    await act(() => {
+      ui?.mockInput.pressKey("n");
+      ui?.mockInput.pressKey("x", { ctrl: true });
+      ui?.mockInput.pressKey("y");
+    });
+    await until(
+      () => completed === 1 || frame().includes("WARNING: Remove all other linked worktrees"),
+    );
+    expect(completed).toBe(0);
+    expect(frame()).not.toContain("Discard data across");
+    await key("y");
+    expect(frame()).toContain("Discard data across");
+    await key("n");
+    expect(fs.readFileSync(file, "utf8")).toBe("keep me");
+    expect(fs.existsSync(alpha)).toBe(true);
+  });
+
   it("guards repeated approval and shortcut events during real Git deletion", async () => {
     await mount();
     await key("x", { ctrl: true });

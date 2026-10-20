@@ -32,7 +32,8 @@ export function RemovePicker({
 }: Props) {
   const renderer = useRenderer();
   const [confirmState, setConfirmState] = useState<ConfirmState>("none");
-  const [batch, setBatch] = useState(false);
+  const [batch, setBatch] = useState<number | null>(null);
+  const nextBatchId = useRef(0);
   const batchActive = useRef(false);
   const [filter, setFilter] = useState("");
 
@@ -83,7 +84,8 @@ export function RemovePicker({
     if (key.ctrl && key.name === "x") {
       key.preventDefault();
       batchActive.current = true;
-      setBatch(true);
+      nextBatchId.current += 1;
+      setBatch(nextBatchId.current);
       return;
     }
     if (key.name === "tab") {
@@ -107,13 +109,14 @@ export function RemovePicker({
     }
   });
 
-  if (batch) {
+  if (batch !== null) {
     return (
       <BatchRemoval
+        key={batch}
         currentWorktreePath={currentWorktreePath}
         onCancel={() => {
           batchActive.current = false;
-          setBatch(false);
+          setBatch(null);
         }}
         onDone={onDone}
       />

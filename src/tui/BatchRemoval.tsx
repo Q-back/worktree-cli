@@ -9,6 +9,7 @@ import { theme } from "./theme.ts";
 
 type State =
   | { stage: "planning" }
+  | { stage: "cancelled" }
   | { stage: "confirm" | "confirm-loss" | "executing"; plan: BatchRemovalPlan }
   | { stage: "message"; message: string; error: boolean };
 
@@ -31,7 +32,7 @@ export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
     let active = true;
     planBatchRemoval(currentWorktreePath).then(
       (plan) => {
-        if (!active) return;
+        if (!active || current.current.stage === "cancelled") return;
         update(
           plan.targets.length > 0
             ? { stage: "confirm", plan }
@@ -39,7 +40,9 @@ export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
         );
       },
       (error: unknown) => {
-        if (active) update({ stage: "message", message: String(error), error: true });
+        if (active && current.current.stage !== "cancelled") {
+          update({ stage: "message", message: String(error), error: true });
+        }
       },
     );
     return () => {
@@ -49,7 +52,7 @@ export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
 
   useKeyboard(async (key) => {
     const pending = current.current;
-    if (pending.stage === "executing") return;
+    if (pending.stage === "executing" || pending.stage === "cancelled") return;
     if (
       key.name === "escape" ||
       key.sequence === "n" ||
@@ -57,6 +60,7 @@ export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
       (key.ctrl && ["c", "d"].includes(key.name))
     ) {
       key.preventDefault();
+      update({ stage: "cancelled" });
       onCancel();
       return;
     }
@@ -78,6 +82,7 @@ export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
     }
   });
 
+  if (state.stage === "cancelled") return null;
   if (state.stage === "planning" || state.stage === "executing") {
     return (
       <text fg={theme.muted}>
