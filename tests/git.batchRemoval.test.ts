@@ -72,6 +72,36 @@ describe("batch target selection", () => {
     expect(fs.existsSync(repoRoot)).toBe(true);
   });
 
+  it.each(["current", "original"])("blocks a target containing the %s worktree", async (kind) => {
+    const outer = await linked("outer", true);
+    let current = path.join(outer, "current");
+    if (kind === "current") {
+      await addNewBranch(repoRoot, current, "current", "main");
+    } else {
+      current = await linked("caller", true);
+      const relocated = path.join(outer, "original");
+      fs.renameSync(repoRoot, relocated);
+      repoRoot = relocated;
+      await git(["worktree", "repair"]);
+    }
+    await expect(planBatchRemoval(current)).rejects.toThrow("contains protected worktree");
+    for (const directory of [outer, current, repoRoot]) {
+      expect(fs.readFileSync(path.join(directory, "README.md"), "utf8")).toBe("hello");
+    }
+    expect(await list(repoRoot)).toHaveLength(3);
+  });
+
+  it("allows sibling targets sharing a path prefix with protected worktrees", async () => {
+    const target = await linked("rep", true);
+    const current = await linked("replica", true);
+    const plan = await planBatchRemoval(current);
+    expect(plan.targets.map((t) => t.path)).toEqual([target]);
+    await executeBatchRemoval(plan);
+    expect(fs.existsSync(target)).toBe(false);
+    expect(fs.existsSync(current)).toBe(true);
+    expect(fs.existsSync(repoRoot)).toBe(true);
+  });
+
   it("returns an empty batch when no other linked checkout exists", async () => {
     expect(await targetPaths(repoRoot)).toEqual([]);
     const current = await linked("current");

@@ -1,4 +1,5 @@
 import { realpath, stat } from "node:fs/promises";
+import * as path from "node:path";
 import { execOrThrow } from "../lib/exec.ts";
 import { findCurrentWorktree, findRepoRoot } from "./repo.ts";
 import { remove } from "./worktrees.ts";
@@ -20,6 +21,7 @@ export interface BatchRemovalPlan {
  * Inspect every eligible checkout without removing anything. The original and
  * invocation worktrees are excluded by canonical path, not branch or container.
  * Missing, foreign, uninspectable or locked targets block the entire plan.
+ * Targets containing either protected worktree also block the entire plan.
  * `dirty` includes tracked, untracked and ignored data that deletion would lose.
  * Callers must preview this fixed plan and confirm the batch before executing it.
  */
@@ -36,6 +38,10 @@ export async function planBatchRemoval(cwd = process.cwd()): Promise<BatchRemova
   for (const [index, entry] of registry.entries()) {
     const targetPath = paths[index];
     if (index === 0 || targetPath === currentPath || targetPath === undefined) continue;
+    const protectedPath = [repoRoot, currentPath].find((p) => containsPath(targetPath, p));
+    if (protectedPath) {
+      throw new Error(`Cannot remove ${targetPath}: contains protected worktree ${protectedPath}`);
+    }
     targets.push(await inspectTarget(repoRoot, targetPath, entry.locked));
   }
   return { repoRoot, currentPath, currentIdentity, targets };
@@ -117,6 +123,11 @@ async function revalidate(plan: BatchRemovalPlan): Promise<BatchRemovalPlan> {
       { cause },
     );
   }
+}
+
+function containsPath(parent: string, child: string): boolean {
+  const relative = path.relative(parent, child);
+  return !path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${path.sep}`);
 }
 
 async function inspectTarget(
