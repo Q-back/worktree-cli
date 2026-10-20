@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --watch src/index.tsx",
-    "check": "biome check --write .",
+    "prepare": "husky",
+    "check": "biome check .",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
@@ -19,6 +20,7 @@
     "@biomejs/biome": "latest",
     "@types/bun": "^1.3.13",
     "@types/react": "^19.0.0",
+    "husky": "^9.1.7",
     "typescript": "^5.0.0"
   }
 }

@@ -24,3 +24,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Linting
 
 `noExplicitAny` is set to `error` in biome.json — no `any` types allowed.
+
+## Tests
+
+A task is not complete until all tests pass. Run `bun test` before finishing and
+do not report completion with failing tests.

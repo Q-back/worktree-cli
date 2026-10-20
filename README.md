@@ -92,4 +92,5 @@ bun run typecheck  # tsc --noEmit
 bun run check      # biome format + lint
 ```
 
+`bun install` configures a pre-commit hook that runs check, typecheck, and tests.
 Tests create throwaway git repos in `os.tmpdir()` — no mocking of git.

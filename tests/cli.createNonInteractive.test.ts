@@ -17,7 +17,14 @@ async function git(args: string[], cwd = repoRoot) {
 async function runWt(branch: string, cwd = repoRoot) {
   const outputFile = path.join(tmpDir, "wt-output.txt");
   const result = await exec(
-    ["bun", "run", path.join(process.cwd(), "src/index.tsx"), branch, "--output-file", outputFile],
+    [
+      process.execPath,
+      "run",
+      path.join(process.cwd(), "src/index.tsx"),
+      branch,
+      "--output-file",
+      outputFile,
+    ],
     { cwd },
   );
   const stdout = fs.existsSync(outputFile) ? fs.readFileSync(outputFile, "utf8") : "";
