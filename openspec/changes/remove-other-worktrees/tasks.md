@@ -14,10 +14,10 @@ At each green boundary, inspect the actual diff and added-line count before comm
 
 ## 2. Commit: Expose confirmed bulk removal in the CLI
 
-- [ ] 2.1 Route `wt --remove-all` before branch creation, reject incompatible extra arguments, and retain lazy TUI loading; verify CLI tests cover correct routing, invalid combinations, existing help/completion/create behavior, and no native terminal output on this path.
-- [ ] 2.2 Add terminal-only batch preview, red warnings, one removal confirmation, and at most one aggregate data-loss confirmation; verify terminal-backed integration tests using real Git worktrees cover clean success and approval across multiple dirty targets, including untracked-only and ignored-only targets.
-- [ ] 2.3 Make negative responses, Escape, EOF, and interruption stop the entire flow; verify cancellation at either stage leaves clean and dirty worktrees and their contents intact, and piped approvals/nonterminal input cannot authorize deletion.
-- [ ] 2.4 Document the CLI command, preservation rules, red warnings, two-stage cancellation, and partial-error limitation in help/README, and add Bash/Zsh completion; verify generated help/completions expose the flag, and bulk-removal shell tests keep stdout/navigation output empty and preserve cwd on success, cancellation, and errors.
+- [x] 2.1 Route `wt --remove-all` before branch creation, reject incompatible extra arguments, and retain lazy TUI loading; verify CLI tests cover correct routing, invalid combinations, existing help/completion/create behavior, and no native terminal output on this path.
+- [x] 2.2 Add terminal-only batch preview, red warnings, one removal confirmation, and at most one aggregate data-loss confirmation; verify terminal-backed integration tests using real Git worktrees cover clean success and approval across multiple dirty targets, including untracked-only and ignored-only targets.
+- [x] 2.3 Make negative responses, Escape, EOF, and interruption stop the entire flow; verify cancellation at either stage leaves clean and dirty worktrees and their contents intact, and piped approvals/nonterminal input cannot authorize deletion.
+- [x] 2.4 Document the CLI command, preservation rules, red warnings, two-stage cancellation, and partial-error limitation in help/README, and add Bash/Zsh completion; verify generated help/completions expose the flag, and bulk-removal shell tests keep stdout/navigation output empty and preserve cwd on success, cancellation, and errors.
 - [ ] 2.5 Run `bun test`, `bun run typecheck`, and `bunx biome check src tests`; inspect the scoped diff and added-line count, commit this group, and complete its review/fix/re-review cycle with passing checks.
 
 ## 3. Commit: Add the Remove-mode bulk shortcut

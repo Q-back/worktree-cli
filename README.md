@@ -21,6 +21,7 @@ new worktree after creation.
 ```
 wt                    Open interactive TUI (create / switch / remove)
 wt <branch>           Switch to or create a worktree for <branch>
+wt --remove-all       Remove all other linked worktrees (terminal only)
 wt --help             Show help
 wt completion zsh     Print zsh completion script
 wt completion bash    Print bash completion script
@@ -45,6 +46,32 @@ Worktrees live **beside** the repo in a `<repo-name>.worktrees/` sibling directo
     ├── PROJ-123-auth/
     └── hotfix-css/
 ```
+
+### Remove all other worktrees
+
+```bash
+wt --remove-all
+```
+
+Targets every registered linked worktree, including paths outside the usual
+container. The original repository, invocation worktree, and all branches are
+preserved. The shell stays in its current directory.
+
+1. Preview every target and a **red removal warning**. Press `y` to approve the batch.
+2. If any target has uncommitted changes, untracked files, or ignored files, see
+   all affected paths and a **red data-loss warning**. Press `y` once more to approve
+   discarding data across the entire dirty batch.
+
+`n`, Escape, end of input (`Ctrl+D`), or interruption (`Ctrl+C`) at either stage
+cancels the **whole batch**, including clean targets. Nothing is deleted before
+all required approvals. Only `y`/`Y` accepts; other input does not approve.
+Interactive terminal input is required: piped approvals and `--yes`/force bypasses
+are not supported. Warnings remain explicit text when color is unavailable.
+
+Missing, uninspectable, locked, or unsafe nested targets block removal. A changed
+target set or newly dirty target requires a fresh preview. Execution is sequential,
+not an atomic filesystem transaction: an error stops further removal and reports
+completed, failed, and unattempted paths. **Earlier removals are not rolled back.**
 
 ### TUI
 
@@ -81,7 +108,7 @@ confirmation inline; dirty worktrees get a second force-remove prompt.
 ## Requirements
 
 - [Bun](https://bun.sh) ≥ 1.0
-- git ≥ 2.5
+- git with `worktree list --porcelain -z` support
 
 ## Development
 
@@ -94,3 +121,5 @@ bun run check      # biome format + lint
 
 `bun install` configures a pre-commit hook that runs check, typecheck, and tests.
 Tests create throwaway git repos in `os.tmpdir()` — no mocking of git.
+Terminal-backed CLI tests also require Python 3 (standard-library PTY support),
+Bash, and Zsh on a POSIX system.

@@ -16,6 +16,7 @@ _wt() {
   done < <(git branch --format='%(refname:short)' 2>/dev/null)
 
   _arguments \\
+    '--remove-all[Remove all other linked worktrees]' \\
     '1: :->arg1' \\
     '*: :->rest'
 
@@ -40,7 +41,7 @@ const BASH_COMPLETION = `_wt_completions() {
   worktrees=$(git worktree list --porcelain 2>/dev/null | awk '/^branch /{print substr($0,15)}' | tail -n +2)
   branches=$(git branch --format='%(refname:short)' 2>/dev/null)
 
-  local completions="$worktrees $branches"
+  local completions="--remove-all $worktrees $branches"
   COMPREPLY=($(compgen -W "$completions" -- "$cur"))
 }
 

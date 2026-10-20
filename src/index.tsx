@@ -1,6 +1,7 @@
 import { printCompletion } from "./cli/completion.ts";
 import { createNonInteractive } from "./cli/createNonInteractive.ts";
 import { printHelp } from "./cli/help.ts";
+import { removeAll } from "./cli/removeAll.ts";
 import { listLocal } from "./git/branches.ts";
 import { findRepoRoot } from "./git/repo.ts";
 import { list } from "./git/worktrees.ts";
@@ -8,6 +9,19 @@ import { list } from "./git/worktrees.ts";
 const args = process.argv.slice(2);
 
 async function main() {
+  if (args.includes("--remove-all")) {
+    const removalArgs = [...args];
+    const outputIndex = removalArgs.indexOf("--output-file");
+    if (outputIndex >= 0 && removalArgs[outputIndex + 1]?.startsWith("--") === false) {
+      removalArgs.splice(outputIndex, 2);
+    }
+    if (removalArgs.length !== 1 || removalArgs[0] !== "--remove-all") {
+      throw new Error("Usage: wt --remove-all [--output-file <path>]");
+    }
+    await removeAll();
+    return;
+  }
+
   if (args[0] === "--help" || args[0] === "-h") {
     printHelp();
     return;
