@@ -18,7 +18,9 @@ At each green boundary, inspect the actual diff and added-line count before comm
 - [x] 2.2 Add terminal-only batch preview, red warnings, one removal confirmation, and at most one aggregate data-loss confirmation; verify terminal-backed integration tests using real Git worktrees cover clean success and approval across multiple dirty targets, including untracked-only and ignored-only targets.
 - [x] 2.3 Make negative responses, Escape, EOF, and interruption stop the entire flow; verify cancellation at either stage leaves clean and dirty worktrees and their contents intact, and piped approvals/nonterminal input cannot authorize deletion.
 - [x] 2.4 Document the CLI command, preservation rules, red warnings, two-stage cancellation, and partial-error limitation in help/README, and add Bash/Zsh completion; verify generated help/completions expose the flag, and bulk-removal shell tests keep stdout/navigation output empty and preserve cwd on success, cancellation, and errors.
-- [ ] 2.5 Run `bun test`, `bun run typecheck`, and `bunx biome check src tests`; inspect the scoped diff and added-line count, commit this group, and complete its review/fix/re-review cycle with passing checks.
+- [x] 2.5 Run `bun test`, `bun run typecheck`, and `bunx biome check src tests`; inspect the scoped diff and added-line count, commit this group, and complete its review/fix/re-review cycle with passing checks.
+
+CLI review disposition: the user explicitly accepted terminal type-ahead as an edge case and retained the planned single-key `y`/`Y` UX. The review's fragmented-input finding is an accepted risk, not a required fix; no typed phrase, delay, or extra confirmation is added.
 
 ## 3. Commit: Add the Remove-mode bulk shortcut
 
