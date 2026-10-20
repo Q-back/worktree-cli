@@ -105,6 +105,16 @@ Item legend:
 **Remove mode** — fuzzy picker over existing worktrees. Enter prompts `y/n`
 confirmation inline; dirty worktrees get a second force-remove prompt.
 
+The footer advertises **`ctrl+x remove all others`**. This shortcut starts the
+same safe batch flow as `wt --remove-all`, covering **all eligible registered
+worktrees regardless of the current filter**. It preserves the invocation
+worktree, original repository, and branches. Preview paths with `↑↓`, `PgUp` /
+`PgDn`, or `Home` / `End`; long paths wrap and the list scrolls. Removal and
+data-loss warnings are red, with one confirmation per required stage. `n`, Escape,
+or interruption cancels before deletion and clears approvals. Filtering and mode
+changes pause during the batch flow. Plain `x` still filters; Enter still removes
+one item. The shortcut is not active in Go mode.
+
 ## Requirements
 
 - [Bun](https://bun.sh) ≥ 1.0

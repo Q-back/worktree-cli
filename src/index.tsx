@@ -3,7 +3,7 @@ import { createNonInteractive } from "./cli/createNonInteractive.ts";
 import { printHelp } from "./cli/help.ts";
 import { removeAll } from "./cli/removeAll.ts";
 import { listLocal } from "./git/branches.ts";
-import { findRepoRoot } from "./git/repo.ts";
+import { findCurrentWorktree, findRepoRoot } from "./git/repo.ts";
 import { list } from "./git/worktrees.ts";
 
 const args = process.argv.slice(2);
@@ -55,10 +55,11 @@ async function main() {
   // with terminal capability queries).
   const repoRoot = await findRepoRoot();
   const { currentBranch } = await import("./git/repo.ts");
-  const [worktrees, localBranches, activeBranch] = await Promise.all([
+  const [worktrees, localBranches, activeBranch, currentWorktreePath] = await Promise.all([
     list(repoRoot),
     listLocal(repoRoot),
     currentBranch(repoRoot),
+    findCurrentWorktree(),
   ]);
 
   const { createCliRenderer } = await import("@opentui/core");
@@ -73,6 +74,7 @@ async function main() {
       localBranches={localBranches}
       outputFile={outputFile}
       currentBranch={activeBranch}
+      currentWorktreePath={currentWorktreePath}
     />,
   );
 }

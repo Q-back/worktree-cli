@@ -24,8 +24,13 @@ CLI review disposition: the user explicitly accepted terminal type-ahead as an e
 
 ## 3. Commit: Add the Remove-mode bulk shortcut
 
-- [ ] 3.1 Carry invocation worktree identity into Remove mode and bind `Ctrl+X` to the shared batch plan regardless of the current filter; verify keyboard/component tests cover filtered lists, plain `x`, unchanged Enter removal, no global Go-mode trigger, and current-worktree protection.
-- [ ] 3.2 Add accessible target previews and red removal/data-loss warning states, with one confirmation per stage and no deletion before both required approvals; verify rendered output and state transitions for clean and multiple-dirty-target batches, cancellation at either stage, empty batches, and inspection errors.
-- [ ] 3.3 Suspend filtering and duplicate actions while the batch flow is active, reset authorization on cancellation, and report removal failures accurately; verify input-routing/re-entry tests and at least one TUI-to-real-Git integration path demonstrate correct removal and no accidental repeated execution.
-- [ ] 3.4 Update the Remove footer and README with `ctrl+x remove all others` and its batch-wide scope; verify the hint is rendered and manually smoke-test the shortcut, long target previews, warnings, cancellation, and unchanged Go/Remove navigation.
+- [x] 3.1 Carry invocation worktree identity into Remove mode and bind `Ctrl+X` to the shared batch plan regardless of the current filter; verify keyboard/component tests cover filtered lists, plain `x`, unchanged Enter removal, no global Go-mode trigger, and current-worktree protection.
+- [x] 3.2 Add accessible target previews and red removal/data-loss warning states, with one confirmation per stage and no deletion before both required approvals; verify rendered output and state transitions for clean and multiple-dirty-target batches, cancellation at either stage, empty batches, and inspection errors.
+- [x] 3.3 Suspend filtering and duplicate actions while the batch flow is active, reset authorization on cancellation, and report removal failures accurately; verify input-routing/re-entry tests and at least one TUI-to-real-Git integration path demonstrate correct removal and no accidental repeated execution.
+- [x] 3.4 Update the Remove footer and README with `ctrl+x remove all others` and its batch-wide scope; verify the hint is rendered and manually smoke-test the shortcut, long target previews, warnings, cancellation, and unchanged Go/Remove navigation.
 - [ ] 3.5 Run `bun test`, `bun run typecheck`, `bunx biome check src tests`, and `openspec validate remove-other-worktrees --strict`; inspect the scoped diff and added-line count, commit this group, and complete its review/fix/re-review cycle with passing checks.
+
+## Follow-ups outside this change
+
+- Existing help routing in `src/index.tsx` does not recognize `--help` when the shell wrapper prepends `--output-file`; direct binary help and the new bulk flag work.
+- Existing non-batch picker rows in `src/tui/GoPicker.tsx` and `src/tui/RemovePicker.tsx` can overlap with many long branch names in a small viewport. The new batch preview scrolls independently; only the layout sizing needed to keep its chrome and footer readable was changed.

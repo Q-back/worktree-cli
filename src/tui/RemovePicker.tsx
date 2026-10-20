@@ -2,6 +2,7 @@ import { useKeyboard, useRenderer } from "@opentui/react";
 import { useCallback, useRef, useState } from "react";
 import type { Worktree } from "../git/worktrees.ts";
 import { remove } from "../git/worktrees.ts";
+import { BatchRemoval } from "./BatchRemoval.tsx";
 import { fuzzyFilter } from "./hooks/useFuzzy.ts";
 import { theme } from "./theme.ts";
 
@@ -14,15 +15,26 @@ interface WtItem {
 
 interface Props {
   repoRoot: string;
+  currentWorktreePath: string;
   worktrees: Worktree[];
   onDone: () => void;
   onError: (msg: string) => void;
   onToggleMode: () => void;
 }
 
-export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMode }: Props) {
+export function RemovePicker({
+  repoRoot,
+  currentWorktreePath,
+  worktrees,
+  onDone,
+  onError,
+  onToggleMode,
+}: Props) {
   const renderer = useRenderer();
   const [confirmState, setConfirmState] = useState<ConfirmState>("none");
+  const [batch, setBatch] = useState(false);
+  const batchActive = useRef(false);
+  const [filter, setFilter] = useState("");
 
   const baseItemsRef = useRef<WtItem[]>(
     worktrees
@@ -40,11 +52,14 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
   const selected = filtered[safeIdx];
 
   const handleInput = useCallback((v: string) => {
+    if (batchActive.current) return;
+    setFilter(v);
     setFiltered(fuzzyFilter(baseItemsRef.current, ["branch"], v));
     setSelectedIdx(0);
   }, []);
 
   useKeyboard(async (key) => {
+    if (batchActive.current) return;
     if (confirmState !== "none") {
       if (key.sequence === "y" || key.sequence === "Y") {
         if (!selected) return;
@@ -65,6 +80,12 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
       return;
     }
 
+    if (key.ctrl && key.name === "x") {
+      key.preventDefault();
+      batchActive.current = true;
+      setBatch(true);
+      return;
+    }
     if (key.name === "tab") {
       onToggleMode();
       return;
@@ -86,6 +107,19 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
     }
   });
 
+  if (batch) {
+    return (
+      <BatchRemoval
+        currentWorktreePath={currentWorktreePath}
+        onCancel={() => {
+          batchActive.current = false;
+          setBatch(false);
+        }}
+        onDone={onDone}
+      />
+    );
+  }
+
   const confirmMsg =
     confirmState === "confirm-force"
       ? `Worktree is dirty. Force remove ${selected?.path}?`
@@ -93,9 +127,15 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
 
   return (
     <box flexDirection="column" width="100%" height="100%">
-      <box flexDirection="row" paddingLeft={2} paddingTop={1} height={2}>
+      <box flexDirection="row" paddingLeft={2} paddingTop={1} height={2} flexShrink={0}>
         <text fg={theme.accent}>› </text>
-        <input focused width="100%" placeholder="type to filter…" onInput={handleInput} />
+        <input
+          focused
+          width="100%"
+          value={filter}
+          placeholder="type to filter…"
+          onInput={handleInput}
+        />
       </box>
       {confirmState !== "none" ? (
         <box flexDirection="column" paddingLeft={2} paddingTop={1}>
@@ -116,7 +156,9 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
           {filtered.length === 0 && <text fg={theme.dim}>No worktrees</text>}
         </box>
       )}
-      <text fg={theme.dim}>{"─".repeat(80)}</text>
+      <text fg={theme.dim} height={1} flexShrink={0} wrapMode="none">
+        {"─".repeat(80)}
+      </text>
       <RemoveFooter />
     </box>
   );
@@ -124,12 +166,15 @@ export function RemovePicker({ repoRoot, worktrees, onDone, onError, onToggleMod
 
 function RemoveFooter() {
   return (
-    <box flexDirection="column" paddingLeft={1} paddingBottom={1}>
-      <box flexDirection="row">
+    <box flexDirection="column" paddingLeft={1} paddingBottom={1} flexShrink={0}>
+      <box flexDirection="row" height={1} flexShrink={0}>
         <text fg={theme.worktree}>● </text>
         <text fg={theme.muted}>worktree</text>
+        <text fg={theme.dim}>{"  │  "}</text>
+        <text fg={theme.text}>ctrl+x</text>
+        <text fg={theme.muted}> remove all others</text>
       </box>
-      <box flexDirection="row">
+      <box flexDirection="row" height={1} flexShrink={0}>
         <text fg={theme.text}>↑↓</text>
         <text fg={theme.muted}> navigate</text>
         <text fg={theme.dim}>{"  │  "}</text>

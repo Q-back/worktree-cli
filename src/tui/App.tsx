@@ -14,9 +14,17 @@ interface Props {
   localBranches: string[];
   outputFile: string;
   currentBranch: string;
+  currentWorktreePath: string;
 }
 
-export function App({ repoRoot, worktrees, localBranches, outputFile, currentBranch }: Props) {
+export function App({
+  repoRoot,
+  worktrees,
+  localBranches,
+  outputFile,
+  currentBranch,
+  currentWorktreePath,
+}: Props) {
   const renderer = useRenderer();
   const [mode, setMode] = useState<Mode>("go");
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +48,7 @@ export function App({ repoRoot, worktrees, localBranches, outputFile, currentBra
 
   return (
     <box flexDirection="column" width="100%" height="100%" borderStyle="single">
-      <box flexDirection="row" paddingLeft={1} paddingRight={1}>
+      <box flexDirection="row" paddingLeft={1} paddingRight={1} height={1} flexShrink={0}>
         <text fg={mode === "go" ? theme.accent : theme.dim}>{mode === "go" ? "▸ " : "  "}Go</text>
         <text>{"    "}</text>
         <text fg={mode === "remove" ? theme.accent : theme.dim}>
@@ -49,31 +57,36 @@ export function App({ repoRoot, worktrees, localBranches, outputFile, currentBra
         <box flexGrow={1} />
         <text fg={theme.muted}>⇥ switch</text>
       </box>
-      <text fg={theme.dim}>{"─".repeat(80)}</text>
+      <text fg={theme.dim} height={1} flexShrink={0} wrapMode="none">
+        {"─".repeat(80)}
+      </text>
       {error && (
         <box paddingLeft={1}>
           <text fg={theme.error}>Error: {error}</text>
         </box>
       )}
-      {mode === "go" ? (
-        <GoPicker
-          repoRoot={repoRoot}
-          worktrees={worktrees}
-          localBranches={localBranches}
-          currentBranch={currentBranch}
-          onDone={handleDone}
-          onError={handleError}
-          onToggleMode={toggleMode}
-        />
-      ) : (
-        <RemovePicker
-          repoRoot={repoRoot}
-          worktrees={worktrees}
-          onDone={handleRemoveDone}
-          onError={handleError}
-          onToggleMode={toggleMode}
-        />
-      )}
+      <box flexDirection="column" flexGrow={1} minHeight={0}>
+        {mode === "go" ? (
+          <GoPicker
+            repoRoot={repoRoot}
+            worktrees={worktrees}
+            localBranches={localBranches}
+            currentBranch={currentBranch}
+            onDone={handleDone}
+            onError={handleError}
+            onToggleMode={toggleMode}
+          />
+        ) : (
+          <RemovePicker
+            repoRoot={repoRoot}
+            currentWorktreePath={currentWorktreePath}
+            worktrees={worktrees}
+            onDone={handleRemoveDone}
+            onError={handleError}
+            onToggleMode={toggleMode}
+          />
+        )}
+      </box>
     </box>
   );
 }
