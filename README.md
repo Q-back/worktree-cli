@@ -114,10 +114,14 @@ same safe batch flow as `wt --remove-all`, covering **all eligible registered
 worktrees regardless of the current filter**. It preserves the invocation
 worktree, original repository, and branches. Preview paths with `↑↓`, `PgUp` /
 `PgDn`, or `Home` / `End`; long paths wrap and the list scrolls. Removal and
-data-loss warnings are red, with one confirmation per required stage. `n`, Escape,
-or interruption cancels before deletion and clears approvals. Filtering and mode
-changes pause during the batch flow. Plain `x` still filters; Enter still removes
-one item. The shortcut is not active in Go mode.
+data-loss warnings are red, with one confirmation per required stage. The data-loss
+screen counts affected worktrees and shows only their full paths, each labeled
+with its reasons: tracked changes, untracked files, ignored files, or "ignored
+files only" when applicable. Clean targets are hidden on this screen but will
+also be removed if confirmed. Paths and reasons wrap and remain scrollable.
+`n`, Escape, or interruption cancels before deletion and clears approvals.
+Filtering and mode changes pause during the batch flow. Plain `x` still filters;
+Enter still removes one item. The shortcut is not active in Go mode.
 
 ## Requirements
 
@@ -134,6 +138,8 @@ bun run check      # biome format + lint
 ```
 
 `bun install` configures a pre-commit hook that runs check, typecheck, and tests.
-Tests create throwaway git repos in `os.tmpdir()` — no mocking of git.
+Tests create throwaway git repos in `os.tmpdir()` — no mocking of git. Test startup
+clears repository-specific Git environment variables so fixtures stay isolated,
+including when tests run from a Git hook.
 Terminal-backed CLI tests also require Python 3 (standard-library PTY support),
 Bash, and Zsh on a POSIX system.

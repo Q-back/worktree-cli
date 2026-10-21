@@ -96,6 +96,9 @@ describe("batch preview and confirmations", () => {
     const untracked = path.join(alpha, "new-data");
     const ignored = path.join(beta, "ignored", "file");
     fs.writeFileSync(untracked, "keep untracked");
+    fs.writeFileSync(path.join(alpha, "README.md"), "tracked");
+    fs.mkdirSync(path.join(alpha, "ignored"));
+    fs.writeFileSync(path.join(alpha, "ignored", "file"), "also ignored");
     fs.mkdirSync(path.dirname(ignored));
     fs.writeFileSync(ignored, "keep ignored");
     await mount();
@@ -108,8 +111,15 @@ describe("batch preview and confirmations", () => {
     expect(warning?.fg.toInts()).toEqual([248, 113, 113, 255]);
     await key("y");
     expect(frame()).toContain("Uncommitted changes, untracked and ignored files will be lost");
-    expect(frame()).toContain(alpha);
-    expect(frame()).toContain(beta);
+    expect(frame()).toContain("Affected worktrees (2): every worktree below has data to discard.");
+    expect(frame()).toContain(`${alpha}  [tracked changes, untracked files, ignored files]`);
+    expect(frame()).toContain(`${beta}  [ignored files only]`);
+    const lossWarning = ui
+      ?.captureSpans()
+      .lines.flatMap((line) => line.spans)
+      .find((span) => span.text.includes("WARNING:"));
+    expect(lossWarning?.fg.toInts()).toEqual([248, 113, 113, 255]);
+    expect(frame()).toContain("Clean targets are hidden but will also be removed if confirmed.");
     expect(fs.readFileSync(untracked, "utf8")).toBe("keep untracked");
     expect(fs.readFileSync(ignored, "utf8")).toBe("keep ignored");
     expect(completed).toBe(0);
@@ -117,6 +127,85 @@ describe("batch preview and confirmations", () => {
     await until(() => completed === 1);
     expect(await list(repoRoot)).toHaveLength(2);
     expect(fs.existsSync(current)).toBe(true);
+  });
+
+  it.each([
+    "y",
+    "n",
+  ])("keeps clean targets in the mixed batch when choosing %s", async (approval) => {
+    const gamma = path.join(directory, "gamma");
+    await addNewBranch(repoRoot, gamma, "gamma", "main");
+    fs.writeFileSync(path.join(beta, "README.md"), "tracked");
+    fs.writeFileSync(path.join(gamma, "new-data"), "untracked");
+    await mount();
+    await key("x", { ctrl: true });
+    await preview();
+    expect(frame()).toContain(alpha);
+    expect(frame()).not.toContain("Affected worktrees");
+    await key("y");
+    expect(frame()).toContain("Affected worktrees (2): every worktree below has data to discard.");
+    expect(frame()).not.toContain(alpha);
+    expect(frame()).toContain(`${beta}  [tracked changes]`);
+    expect(frame()).toContain(`${gamma}  [untracked files]`);
+    expect(frame()).toContain("Clean targets are hidden but will also be removed if confirmed.");
+    await key(approval);
+    await until(() => (approval === "y" ? completed === 1 : frame().includes("type to filter")));
+    for (const target of [alpha, beta, gamma]) {
+      expect(fs.existsSync(target)).toBe(approval === "n");
+    }
+    expect(fs.existsSync(current)).toBe(true);
+    expect(fs.existsSync(repoRoot)).toBe(true);
+  });
+
+  it("keeps warning scope and controls readable while scrolling wrapped paths and reasons", async () => {
+    const targets = [alpha, beta];
+    for (const name of ["extra-a", "extra-b", "z-long-affected-target-with-extra-context"]) {
+      const target = path.join(directory, name);
+      await addNewBranch(repoRoot, target, name, "main");
+      targets.push(target);
+    }
+    for (const target of targets) {
+      fs.mkdirSync(path.join(target, "ignored"));
+      fs.writeFileSync(path.join(target, "ignored", "file"), "keep ignored");
+    }
+    ui = await testRender(
+      <App
+        repoRoot={repoRoot}
+        currentWorktreePath={current}
+        worktrees={await list(repoRoot)}
+        localBranches={[]}
+        currentBranch="main"
+        outputFile={path.join(directory, "navigation")}
+      />,
+      { width: 55, height: 18, exitOnCtrlC: false },
+    );
+    await key("TAB");
+    await key("x", { ctrl: true });
+    await preview();
+    await key("y");
+    const compact = () => frame().replace(/[\s│█▀▄]/g, "");
+    const checkScope = () => {
+      expect(compact()).toContain("WARNING:Uncommittedchanges,untrackedandignoredfileswillbelost");
+      expect(compact()).toContain("Affectedworktrees(5):everyworktreebelowhasdatatodiscard.");
+      expect(compact()).toContain("Cleantargetsarehiddenbutwillalsoberemovedifconfirmed.");
+      expect(compact()).toContain("[y]confirm[n/esc]cancel");
+    };
+    checkScope();
+    expect(frame()).not.toContain("z-long-affected");
+    for (const target of targets) {
+      await key("HOME");
+      let seen = compact();
+      for (let step = 0; step < 30 && !seen.includes(`${target}[ignoredfilesonly]`); step++) {
+        await key("ARROW_DOWN");
+        checkScope();
+        seen += compact();
+      }
+      expect(seen).toContain(`${target}[ignoredfilesonly]`);
+    }
+    await key("END");
+    expect(compact()).toContain("z-long-affected-target-with-extra-context[ignoredfilesonly]");
+    await key("n");
+    for (const target of targets) expect(fs.existsSync(target)).toBe(true);
   });
 
   for (const stage of ["removal", "data-loss"]) {

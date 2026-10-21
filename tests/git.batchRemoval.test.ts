@@ -283,8 +283,39 @@ describe("batch inspection", () => {
         .sort(),
     ).toEqual(dirty.map((t) => t.target).sort());
     expect(plan.targets.find((t) => t.path === clean)?.dirty).toBe(false);
+    expect(plan.targets.find((t) => t.path === clean)?.reasons).toEqual([]);
+    for (const { target, contents } of dirty) {
+      const reason =
+        contents === "ignored"
+          ? "ignored files"
+          : contents === "untracked"
+            ? "untracked files"
+            : "tracked changes";
+      expect(plan.targets.find((t) => t.path === target)?.reasons).toEqual([reason]);
+    }
     for (const { file, contents } of dirty) expect(fs.readFileSync(file, "utf8")).toBe(contents);
     expect(await list(repoRoot)).toHaveLength(6);
+  });
+
+  it("deduplicates and orders mixed reasons without treating rename paths as status records", async () => {
+    const target = await linked("mixed");
+    await git(["mv", "README.md", "?? original\nfile"], target);
+    await git(["commit", "-m", "unusual tracked name"], target);
+    await git(["mv", "?? original\nfile", "!! renamed\nfile"], target);
+    fs.writeFileSync(path.join(target, "?? untracked\nfile"), "untracked");
+    fs.writeFileSync(path.join(target, "other untracked"), "untracked too");
+    fs.mkdirSync(path.join(target, "ignored"));
+    fs.writeFileSync(path.join(target, "ignored", "file"), "ignored");
+    const plan = await planBatchRemoval(repoRoot);
+    expect(plan.targets[0]?.reasons).toEqual([
+      "tracked changes",
+      "untracked files",
+      "ignored files",
+    ]);
+    expect(plan.targets[0]?.dirty).toBe(true);
+
+    await git(["clean", "-fdx"], target);
+    expect((await planBatchRemoval(repoRoot)).targets[0]?.reasons).toEqual(["tracked changes"]);
   });
 
   it.each([

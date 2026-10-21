@@ -12,10 +12,13 @@ export interface BatchRemovalProgress {
   readonly path: string;
 }
 
+export type DataLossReason = "tracked changes" | "untracked files" | "ignored files";
+
 export interface BatchRemovalTarget {
   readonly path: string;
   readonly identity: string;
   readonly dirty: boolean;
+  readonly reasons: readonly DataLossReason[];
 }
 
 export interface BatchRemovalPlan {
@@ -180,13 +183,32 @@ async function inspectTarget(
       ],
       { cwd: targetPath },
     );
-    return { path: targetPath, identity, dirty: status.length > 0 };
+    const reasons = dataLossReasons(status);
+    return { path: targetPath, identity, dirty: reasons.length > 0, reasons };
   } catch (cause) {
     throw new Error(
       `Cannot inspect ${targetPath}: ${cause instanceof Error ? cause.message : cause}`,
       { cause },
     );
   }
+}
+
+function dataLossReasons(status: string): DataLossReason[] {
+  const found = new Set<DataLossReason>();
+  const records = status.split("\0");
+  for (let index = 0; index < records.length; index++) {
+    const record = records[index];
+    if (!record) continue;
+    const code = record.slice(0, 2);
+    found.add(
+      code === "??" ? "untracked files" : code === "!!" ? "ignored files" : "tracked changes",
+    );
+    // Porcelain -z renames/copies have an extra NUL-delimited source path.
+    if (code.includes("R") || code.includes("C")) index++;
+  }
+  return (["tracked changes", "untracked files", "ignored files"] as const).filter((reason) =>
+    found.has(reason),
+  );
 }
 
 async function worktreeIdentity(repoRoot: string, targetPath: string): Promise<string> {

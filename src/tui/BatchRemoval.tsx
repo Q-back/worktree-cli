@@ -138,6 +138,11 @@ export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
       <text fg={theme.muted} flexShrink={0}>
         The original repository, current worktree and branches are preserved.
       </text>
+      {dataLoss && (
+        <text flexShrink={0} wrapMode="char">
+          {`Affected worktrees (${targets.length}): every worktree below has data to discard.`}
+        </text>
+      )}
       <scrollbox
         key={state.stage}
         focused
@@ -150,9 +155,16 @@ export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
         {targets.map((target) => (
           <text key={target.path} flexShrink={0} wrapMode="char">
             {target.path}
+            {dataLoss &&
+              `  [${target.reasons.length === 1 && target.reasons[0] === "ignored files" ? "ignored files only" : target.reasons.join(", ")}]`}
           </text>
         ))}
       </scrollbox>
+      {dataLoss && (
+        <text fg={theme.muted} flexShrink={0} wrapMode="char">
+          Clean targets are hidden but will also be removed if confirmed.
+        </text>
+      )}
       <text fg={theme.error} flexShrink={0}>
         {dataLoss
           ? "Discard data across all affected worktrees?"
