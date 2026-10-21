@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
   BatchRemovalError,
+  type BatchRemovalProgress,
   executeBatchRemoval,
   planBatchRemoval,
 } from "../src/git/batchRemoval.ts";
@@ -122,6 +123,44 @@ it("preserves the single-removal DIRTY sentinel and explicit force behavior", as
   expect(fs.existsSync(target)).toBe(false);
 });
 
+describe("batch progress", () => {
+  it("reports each target before inspection, rechecking and sequential removal", async () => {
+    const first = await linked("first");
+    const targets = [first, await linked("second")];
+    const events: BatchRemovalProgress[] = [];
+    const report = (progress: BatchRemovalProgress) => {
+      expect(fs.existsSync(progress.path)).toBe(true);
+      if (progress.phase !== "removing") {
+        for (const target of targets) expect(fs.existsSync(target)).toBe(true);
+      } else if (progress.current === 2) {
+        expect(fs.existsSync(first)).toBe(false);
+      }
+      events.push(progress);
+    };
+    const plan = await planBatchRemoval(repoRoot, report);
+    expect(events).toEqual(
+      targets.map((target, index) => ({
+        phase: "inspecting",
+        current: index + 1,
+        total: 2,
+        path: target,
+      })),
+    );
+    events.length = 0;
+    await executeBatchRemoval(plan, false, report);
+    expect(events).toEqual(
+      (["rechecking", "removing"] as const).flatMap((phase) =>
+        targets.map((target, index) => ({
+          phase,
+          current: index + 1,
+          total: 2,
+          path: target,
+        })),
+      ),
+    );
+  });
+});
+
 describe("batch execution", () => {
   it.each([
     "original",
@@ -181,7 +220,11 @@ describe("batch execution", () => {
       fs.renameSync(last, `${last}-old`);
       fs.cpSync(`${last}-old`, last, { recursive: true });
     }
-    await expect(executeBatchRemoval(plan, true)).rejects.toThrow("fresh preview");
+    const progress: BatchRemovalProgress[] = [];
+    await expect(executeBatchRemoval(plan, true, (event) => progress.push(event))).rejects.toThrow(
+      "fresh preview",
+    );
+    expect(progress.some((event) => event.phase === "removing")).toBe(false);
     for (const target of plan.targets) {
       expect(fs.existsSync(target.path)).toBe(change !== "removed" || target.path !== last);
     }
@@ -198,13 +241,17 @@ describe("batch execution", () => {
     const plan = await planBatchRemoval(repoRoot);
     expect(plan.targets.map((t) => t.path)).toEqual([first, failed, remaining]);
     let failure: unknown;
+    const progress: BatchRemovalProgress[] = [];
     try {
-      await executeBatchRemoval(plan);
+      await executeBatchRemoval(plan, false, (event) => progress.push(event));
     } catch (error) {
       failure = error;
     }
     expect(failure).toBeInstanceOf(BatchRemovalError);
     if (!(failure instanceof BatchRemovalError)) throw failure;
+    expect(
+      progress.filter((event) => event.phase === "removing").map((event) => event.path),
+    ).toEqual([first, failed]);
     expect(failure.completed).toEqual([first]);
     expect(failure.failed).toBe(failed);
     expect(failure.unattempted).toEqual([remaining]);

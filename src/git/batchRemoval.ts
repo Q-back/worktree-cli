@@ -4,6 +4,14 @@ import { execOrThrow } from "../lib/exec.ts";
 import { findCurrentWorktree, findRepoRoot } from "./repo.ts";
 import { remove } from "./worktrees.ts";
 
+export interface BatchRemovalProgress {
+  readonly phase: "inspecting" | "rechecking" | "removing";
+  /** One-based index of the target being processed, not a completed count. */
+  readonly current: number;
+  readonly total: number;
+  readonly path: string;
+}
+
 export interface BatchRemovalTarget {
   readonly path: string;
   readonly identity: string;
@@ -25,7 +33,10 @@ export interface BatchRemovalPlan {
  * `dirty` includes tracked, untracked and ignored data that deletion would lose.
  * Callers must preview this fixed plan and confirm the batch before executing it.
  */
-export async function planBatchRemoval(cwd = process.cwd()): Promise<BatchRemovalPlan> {
+export async function planBatchRemoval(
+  cwd = process.cwd(),
+  onProgress?: (progress: BatchRemovalProgress) => void,
+): Promise<BatchRemovalPlan> {
   const repoRoot = await realpath(await findRepoRoot(cwd));
   const currentPath = await findCurrentWorktree(cwd);
   const registry = await readRegistry(repoRoot);
@@ -35,9 +46,16 @@ export async function planBatchRemoval(cwd = process.cwd()): Promise<BatchRemova
   }
   const currentIdentity = await worktreeIdentity(repoRoot, currentPath);
   const targets: BatchRemovalTarget[] = [];
+  const total = paths.filter((targetPath, index) => index > 0 && targetPath !== currentPath).length;
   for (const [index, entry] of registry.entries()) {
     const targetPath = paths[index];
     if (index === 0 || targetPath === currentPath || targetPath === undefined) continue;
+    onProgress?.({
+      phase: "inspecting",
+      current: targets.length + 1,
+      total,
+      path: targetPath,
+    });
     const protectedPath = [repoRoot, currentPath].find((p) => containsPath(targetPath, p));
     if (protectedPath) {
       throw new Error(`Cannot remove ${targetPath}: contains protected worktree ${protectedPath}`);
@@ -59,13 +77,20 @@ export async function planBatchRemoval(cwd = process.cwd()): Promise<BatchRemova
 export async function executeBatchRemoval(
   plan: BatchRemovalPlan,
   discardChanges = false,
+  onProgress?: (progress: BatchRemovalProgress) => void,
 ): Promise<string[]> {
   if (!discardChanges && plan.targets.some((target) => target.dirty)) {
     throw new Error("Data-loss authorization is required; no worktrees removed");
   }
-  const fresh = await revalidate(plan);
+  const fresh = await revalidate(plan, onProgress);
   const completed: string[] = [];
   for (const [index, target] of fresh.targets.entries()) {
+    onProgress?.({
+      phase: "removing",
+      current: index + 1,
+      total: fresh.targets.length,
+      path: target.path,
+    });
     try {
       await remove(fresh.repoRoot, target.path, target.dirty && discardChanges);
       completed.push(target.path);
@@ -98,9 +123,14 @@ export class BatchRemovalError extends Error {
   }
 }
 
-async function revalidate(plan: BatchRemovalPlan): Promise<BatchRemovalPlan> {
+async function revalidate(
+  plan: BatchRemovalPlan,
+  onProgress?: (progress: BatchRemovalProgress) => void,
+): Promise<BatchRemovalPlan> {
   try {
-    const fresh = await planBatchRemoval(plan.currentPath);
+    const fresh = await planBatchRemoval(plan.currentPath, (progress) =>
+      onProgress?.({ ...progress, phase: "rechecking" }),
+    );
     const confirmed = new Map(plan.targets.map((target) => [target.path, target]));
     if (
       fresh.repoRoot !== plan.repoRoot ||

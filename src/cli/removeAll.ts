@@ -1,8 +1,13 @@
-import { executeBatchRemoval, planBatchRemoval } from "../git/batchRemoval.ts";
+import {
+  type BatchRemovalProgress,
+  executeBatchRemoval,
+  planBatchRemoval,
+} from "../git/batchRemoval.ts";
 import { confirmTerminal } from "./confirmTerminal.ts";
 
 export async function removeAll(): Promise<void> {
-  const plan = await planBatchRemoval();
+  process.stderr.write("Inspecting all worktrees… Large worktrees can take a while.\n");
+  const plan = await planBatchRemoval(process.cwd(), reportProgress);
   if (plan.targets.length === 0) {
     process.stderr.write("No other worktrees to remove.\n");
     return;
@@ -26,9 +31,17 @@ export async function removeAll(): Promise<void> {
     process.stderr.write("Cancelled. No worktrees removed.\n");
     return;
   }
-  const removed = await executeBatchRemoval(plan, dirty.length > 0);
+  process.stderr.write("Rechecking and removing worktrees… Large worktrees can take a while.\n");
+  const removed = await executeBatchRemoval(plan, dirty.length > 0, reportProgress);
   process.stderr.write(
     `Removed worktrees:\n${removed.map((target) => `  ${target}`).join("\n")}\n`,
+  );
+}
+
+function reportProgress(progress: BatchRemovalProgress): void {
+  const labels = { inspecting: "Inspecting", rechecking: "Rechecking", removing: "Removing" };
+  process.stderr.write(
+    `${labels[progress.phase]} worktrees (${progress.current}/${progress.total}): ${progress.path}\n`,
   );
 }
 

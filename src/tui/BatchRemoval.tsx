@@ -2,6 +2,7 @@ import { useKeyboard, useRenderer } from "@opentui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type BatchRemovalPlan,
+  type BatchRemovalProgress,
   executeBatchRemoval,
   planBatchRemoval,
 } from "../git/batchRemoval.ts";
@@ -22,6 +23,7 @@ interface Props {
 export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
   const renderer = useRenderer();
   const [state, setState] = useState<State>({ stage: "planning" });
+  const [progress, setProgress] = useState<BatchRemovalProgress | null>(null);
   const current = useRef(state);
   const update = useCallback((next: State) => {
     current.current = next;
@@ -30,7 +32,9 @@ export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
 
   useEffect(() => {
     let active = true;
-    planBatchRemoval(currentWorktreePath).then(
+    planBatchRemoval(currentWorktreePath, (next) => {
+      if (active && current.current.stage === "planning") setProgress(next);
+    }).then(
       (plan) => {
         if (!active || current.current.stage === "cancelled") return;
         update(
@@ -72,9 +76,10 @@ export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
       update({ stage: "confirm-loss", plan });
       return;
     }
+    setProgress(null);
     update({ stage: "executing", plan });
     try {
-      await executeBatchRemoval(plan, pending.stage === "confirm-loss");
+      await executeBatchRemoval(plan, pending.stage === "confirm-loss", setProgress);
       renderer.destroy();
       onDone();
     } catch (error) {
@@ -84,10 +89,20 @@ export function BatchRemoval({ currentWorktreePath, onCancel, onDone }: Props) {
 
   if (state.stage === "cancelled") return null;
   if (state.stage === "planning" || state.stage === "executing") {
+    const labels = { inspecting: "Inspecting", rechecking: "Rechecking", removing: "Removing" };
+    const phase = progress?.phase ?? (state.stage === "planning" ? "inspecting" : "rechecking");
     return (
-      <text fg={theme.muted}>
-        {state.stage === "planning" ? "Inspecting all worktrees…" : "Removing worktrees…"}
-      </text>
+      <box flexDirection="column" paddingLeft={2}>
+        <text fg={theme.accent}>
+          {labels[phase]} worktrees{progress ? ` (${progress.current}/${progress.total})` : ""}…
+        </text>
+        {progress && (
+          <text fg={theme.muted} wrapMode="char">
+            {progress.path}
+          </text>
+        )}
+        <text fg={theme.muted}>Large worktrees can take a while.</text>
+      </box>
     );
   }
   if (state.stage === "message") {

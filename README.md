@@ -68,6 +68,10 @@ all required approvals. Only `y`/`Y` accepts; other input does not approve.
 Interactive terminal input is required: piped approvals and `--yes`/force bypasses
 are not supported. Warnings remain explicit text when color is unavailable.
 
+Both the CLI and TUI show the current worktree path and counter while inspecting,
+rechecking, and removing targets. Large worktrees can take a while; each counter
+identifies the target being processed, not a completed removal.
+
 Missing, uninspectable, locked, or unsafe nested targets block removal. A changed
 target set or newly dirty target requires a fresh preview. Execution is sequential,
 not an atomic filesystem transaction: an error stops further removal and reports

@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { testRender } from "@opentui/react/test-utils";
 import { act } from "react";
+import * as batchRemoval from "../src/git/batchRemoval.ts";
 import { addNewBranch, list } from "../src/git/worktrees.ts";
 import { execOrThrow } from "../src/lib/exec.ts";
 import { App } from "../src/tui/App.tsx";
@@ -197,6 +198,61 @@ describe("batch preview and confirmations", () => {
 });
 
 describe("batch input routing and execution", () => {
+  it("shows the phase, target counter, path and long-running notice while busy", async () => {
+    const inspecting = Promise.withResolvers<void>();
+    const rechecking = Promise.withResolvers<void>();
+    const removing = Promise.withResolvers<void>();
+    const realPlan = batchRemoval.planBatchRemoval;
+    const realExecute = batchRemoval.executeBatchRemoval;
+    const planSpy = spyOn(batchRemoval, "planBatchRemoval").mockImplementation(
+      async (cwd, onProgress) => {
+        onProgress?.({ phase: "inspecting", current: 1, total: 2, path: alpha });
+        await inspecting.promise;
+        return realPlan(cwd, onProgress);
+      },
+    );
+    const executeSpy = spyOn(batchRemoval, "executeBatchRemoval").mockImplementation(
+      async (plan, discardChanges, onProgress) => {
+        onProgress?.({ phase: "rechecking", current: 2, total: 2, path: beta });
+        await rechecking.promise;
+        onProgress?.({ phase: "removing", current: 1, total: 2, path: alpha });
+        await removing.promise;
+        return realExecute(plan, discardChanges, onProgress);
+      },
+    );
+    try {
+      await mount();
+      await key("x", { ctrl: true });
+      await until(() => frame().includes("Inspecting worktrees (1/2)"));
+      expect(frame()).toContain(alpha);
+      expect(frame()).toContain("Large worktrees can take a while.");
+      inspecting.resolve();
+      await preview();
+      await key("y");
+      await until(() => frame().includes("Rechecking worktrees (2/2)"));
+      expect(frame()).toContain(beta);
+      expect(frame()).toContain("Large worktrees can take a while.");
+      rechecking.resolve();
+      await until(() => frame().includes("Removing worktrees (1/2)"));
+      expect(frame()).toContain(alpha);
+      expect(frame()).toContain("Large worktrees can take a while.");
+      await key("y");
+      await key("TAB");
+      expect(toggled).toBe(0);
+      expect(executeSpy).toHaveBeenCalledTimes(1);
+      removing.resolve();
+      await until(() => completed === 1);
+      expect(fs.existsSync(alpha)).toBe(false);
+      expect(fs.existsSync(beta)).toBe(false);
+    } finally {
+      inspecting.resolve();
+      rechecking.resolve();
+      removing.resolve();
+      planSpy.mockRestore();
+      executeSpy.mockRestore();
+    }
+  });
+
   it("suspends filtering and mode changes, then resets approvals and restores the filter", async () => {
     fs.writeFileSync(path.join(beta, "new-data"), "keep me");
     await mount();

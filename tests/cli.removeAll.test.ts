@@ -86,6 +86,16 @@ describe("terminal bulk removal", () => {
       expect(result.stderr).toContain(target);
       expect(fs.existsSync(target)).toBe(false);
     }
+    expect(result.stderr).toContain("Large worktrees can take a while.");
+    let lastPosition = -1;
+    for (const phase of ["Inspecting", "Rechecking", "Removing"]) {
+      for (const [index, target] of targets.entries()) {
+        const message = `${phase} worktrees (${index + 1}/2): ${target}`;
+        const position = result.stderr.indexOf(message);
+        expect(position).toBeGreaterThan(lastPosition);
+        lastPosition = position;
+      }
+    }
     expect(result.stderr).toContain("\x1b[31mWARNING:");
     expect(result.stderr).toContain(
       "original repository, current worktree and branches are preserved",
