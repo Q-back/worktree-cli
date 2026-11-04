@@ -18,7 +18,11 @@ export async function removeAll(): Promise<void> {
     );
   }
   warning("Remove all listed linked worktrees:");
-  for (const target of plan.targets) process.stderr.write(`  ${target.path}\n`);
+  for (const target of plan.targets) {
+    process.stderr.write(
+      `  ${target.path}${target.invalid ? " [invalid; contents unchecked]" : ""}\n`,
+    );
+  }
   process.stderr.write("The original repository, current worktree and branches are preserved.\n");
   const dirty = plan.targets.filter((target) => target.dirty);
   let confirmed = await confirmTerminal("Remove all listed worktrees? [y/N] ");
@@ -31,11 +35,37 @@ export async function removeAll(): Promise<void> {
     process.stderr.write("Cancelled. No worktrees removed.\n");
     return;
   }
+  const invalid = plan.targets.filter((target) => target.invalid);
+  let deleteInvalidFolders = false;
+  if (invalid.length > 0) {
+    warning(
+      "These folders have broken Git connections; their contents cannot be checked for unsaved work.",
+    );
+    for (const target of invalid) process.stderr.write(`  ${target.path}\n`);
+    const approval = await confirmTerminal(
+      "Delete all listed invalid folders and their contents? [y/N] ",
+    );
+    if (approval === null) {
+      process.stderr.write("Cancelled. No worktrees removed.\n");
+      return;
+    }
+    deleteInvalidFolders = approval;
+  }
   process.stderr.write("Rechecking and removing worktrees… Large worktrees can take a while.\n");
-  const removed = await executeBatchRemoval(plan, dirty.length > 0, reportProgress);
-  process.stderr.write(
-    `Removed worktrees:\n${removed.map((target) => `  ${target}`).join("\n")}\n`,
+  const removed = await executeBatchRemoval(
+    plan,
+    dirty.length > 0,
+    reportProgress,
+    deleteInvalidFolders,
   );
+  process.stderr.write(
+    `Removed worktrees:\n${removed.map((target) => `  ${target}`).join("\n") || "  none"}\n`,
+  );
+  if (!deleteInvalidFolders && invalid.length > 0) {
+    process.stderr.write(
+      `Skipped invalid folders (registrations kept):\n${invalid.map((target) => `  ${target.path}`).join("\n")}\n`,
+    );
+  }
 }
 
 function reportProgress(progress: BatchRemovalProgress): void {

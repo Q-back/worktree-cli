@@ -48,7 +48,7 @@ The system SHALL expose bulk removal through `wt --remove-all` and `Ctrl+X` in t
 Before deleting anything, the system SHALL inspect every target, show all target paths and a red removal warning, and request one confirmation covering the whole batch. The preview SHALL explain that the original repository, current worktree, and branches are preserved.
 
 #### Scenario: Entire batch is clean
-- **WHEN** every target is clean and the user accepts the batch removal confirmation
+- **WHEN** every target is a valid clean checkout and the user accepts the batch removal confirmation
 - **THEN** the system removes all targets without further confirmation
 
 #### Scenario: Several targets are dirty
@@ -62,16 +62,30 @@ If any target contains uncommitted changes or untracked files, including ignored
 
 #### Scenario: Accept discarding data across dirty worktrees
 - **WHEN** the user accepts the batch removal confirmation and then the aggregate data-loss confirmation
-- **THEN** all targets are removed, including all dirty targets
-- **AND** no further per-worktree confirmation appears
+- **THEN** all valid targets are authorized for removal, including all dirty targets
+- **AND** invalid folders still require their separate aggregate approval
+- **AND** no per-worktree confirmation appears
 
 #### Scenario: Untracked-only or ignored-only worktree
 - **WHEN** a target has no tracked changes but contains untracked or ignored files that would be deleted
 - **THEN** it is included in the aggregate data-loss warning and requires the additional confirmation
 
+### Requirement: Aggregate invalid-folder authorization
+
+Git-marked prunable registrations whose folders lack `.git` metadata SHALL NOT block valid worktree removal. The system SHALL list all such paths together and warn that their contents cannot be checked for unsaved work. Exactly one separate confirmation SHALL cover deleting all invalid folders and individually cleaning their registrations, including already-missing folders. Declining with `n` SHALL preserve those folders and registrations while continuing with approved valid targets. Results SHALL identify removed and skipped paths.
+
+#### Scenario: Several invalid folders
+- **WHEN** the user approves the aggregate invalid-folder confirmation
+- **THEN** all listed invalid folders and their registrations are removed without per-folder prompts
+- **AND** the original repository, current worktree, and branches remain protected
+
+#### Scenario: Decline invalid-folder deletion
+- **WHEN** the user answers `n` at the invalid-folder confirmation
+- **THEN** those folders and registrations remain unchanged and approved valid worktrees are removed
+
 ### Requirement: Cancellation precedes every deletion
 
-A negative response, Escape, end of input, or interruption at either confirmation SHALL stop the entire batch flow before any deletion. Declining data loss SHALL NOT remove even the clean targets. Cancellation SHALL NOT retain authorization for a later attempt.
+A negative response at the removal or dirty-data confirmation, or Escape, end of input, or interruption at any confirmation SHALL stop the entire batch flow before any deletion. Declining data loss SHALL NOT remove even the clean targets. Cancellation SHALL NOT retain authorization for a later attempt.
 
 #### Scenario: Decline initial confirmation
 - **WHEN** the user declines the first confirmation or presses Escape
@@ -83,15 +97,15 @@ A negative response, Escape, end of input, or interruption at either confirmatio
 - **THEN** neither clean nor dirty worktrees are removed
 
 #### Scenario: Interrupted confirmation
-- **WHEN** input ends or the flow is interrupted while either confirmation is pending
+- **WHEN** input ends or the flow is interrupted while any confirmation is pending
 - **THEN** no target is deleted
 
 ### Requirement: Fail-safe inspection and execution
 
-The system SHALL refuse deletion if target identity or required inspection cannot be established safely. Before starting deletion, it SHALL reject a changed target set or newly discovered data loss not covered by the preview and confirmations. Removal errors SHALL stop execution and report any completed removals without claiming rollback.
+Except for separately approved invalid folders, the system SHALL refuse deletion if target identity or required inspection cannot be established safely. Invalid folders SHALL NOT be symlinks, overlap another target, or contain a protected worktree. Locks, foreign repositories, and other inspection failures SHALL remain blocking errors. Before starting deletion, it SHALL reject a changed target set or newly discovered data loss not covered by the preview and confirmations. Removal errors SHALL stop execution and report any completed removals without claiming rollback.
 
 #### Scenario: Unsafe preflight
-- **WHEN** the current worktree cannot be identified, a target cannot be inspected, or a target is locked
+- **WHEN** the current worktree cannot be identified, a target cannot be inspected and does not qualify for invalid-folder approval, or a target is locked
 - **THEN** the system reports the blocking condition and removes nothing
 
 #### Scenario: Changes appear during confirmation

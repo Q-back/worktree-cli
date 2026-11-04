@@ -286,6 +286,35 @@ describe("batch preview and confirmations", () => {
   });
 });
 
+describe("invalid-folder approval", () => {
+  it.each(["y", "n"])("groups invalid folders and continues after %s", async (approval) => {
+    const clean = path.join(directory, "clean");
+    await addNewBranch(repoRoot, clean, "clean", "main");
+    fs.writeFileSync(path.join(clean, "README.md"), "dirty valid worktree");
+    for (const target of [alpha, beta]) fs.unlinkSync(path.join(target, ".git"));
+    await mount();
+    await key("x", { ctrl: true });
+    await preview();
+    await key("y");
+    expect(frame()).toContain("Discard data across all affected worktrees?");
+    await key("y");
+    expect(frame()).toContain("Delete all listed invalid folders and their contents?");
+    expect(frame()).toContain("cannot be checked for unsaved work");
+    for (const target of [alpha, beta]) expect(frame()).toContain(target);
+    expect(fs.existsSync(clean)).toBe(true);
+    await key(approval);
+    await until(() => frame().includes("Removed worktrees:"));
+    expect(fs.existsSync(clean)).toBe(false);
+    for (const target of [alpha, beta]) expect(fs.existsSync(target)).toBe(approval === "n");
+    if (approval === "n") expect(frame()).toContain("Skipped invalid folders");
+    expect(await list(repoRoot)).toHaveLength(approval === "y" ? 2 : 4);
+    expect(fs.existsSync(current)).toBe(true);
+    expect(fs.existsSync(repoRoot)).toBe(true);
+    await key("ESCAPE");
+    await until(() => completed === 1);
+  });
+});
+
 describe("batch input routing and execution", () => {
   it("shows the phase, target counter, path and long-running notice while busy", async () => {
     const inspecting = Promise.withResolvers<void>();

@@ -135,6 +135,46 @@ describe("terminal bulk removal", () => {
   });
 });
 
+describe("invalid-folder approval", () => {
+  it.each(["y", "n"])("asks once for all invalid folders and handles %s", async (approval) => {
+    const clean = await checkout("clean");
+    fs.writeFileSync(path.join(clean, "README.md"), "dirty valid worktree");
+    const invalid = [await checkout("stale-a"), await checkout("stale-b")];
+    for (const target of invalid) fs.unlinkSync(path.join(target, ".git"));
+    const prompt = "Delete all listed invalid folders and their contents? [y/N]";
+    const result = await terminal([
+      { waitFor: removalPrompt, input: "y", check: [clean, ...invalid] },
+      { waitFor: lossPrompt, input: "y", check: [clean, ...invalid] },
+      { waitFor: prompt, input: approval, check: [clean, ...invalid] },
+    ]);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr.split(prompt)).toHaveLength(2);
+    const warning = result.stderr.split(removalPrompt)[1];
+    for (const target of invalid) {
+      expect(warning).toContain(target);
+      expect(fs.existsSync(target)).toBe(approval === "n");
+    }
+    expect(result.stderr).toContain("cannot be checked for unsaved work");
+    if (approval === "n") expect(result.stderr).toContain("Skipped invalid folders");
+    expect(fs.existsSync(clean)).toBe(false);
+    expect(await list(repoRoot)).toHaveLength(approval === "y" ? 1 : 3);
+  });
+
+  it("cancels the entire batch on Escape at invalid-folder approval", async () => {
+    const clean = await checkout("clean");
+    const stale = await checkout("stale");
+    fs.unlinkSync(path.join(stale, ".git"));
+    const result = await terminal([
+      { waitFor: removalPrompt, input: "y" },
+      { waitFor: "Delete all listed invalid folders", input: "\x1b" },
+    ]);
+    expect(result.stderr).toContain("Cancelled. No worktrees removed");
+    expect(fs.existsSync(clean)).toBe(true);
+    expect(fs.existsSync(stale)).toBe(true);
+  });
+});
+
 describe("bulk cancellation", () => {
   for (const stage of ["removal", "data-loss"]) {
     it.each([

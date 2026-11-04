@@ -262,6 +262,89 @@ describe("batch execution", () => {
   });
 });
 
+describe("invalid worktrees", () => {
+  it.each(["missing", "leftover"])("skips %s targets unless separately approved", async (kind) => {
+    const clean = await linked("clean");
+    const invalid = [await linked("stale-a", true), await linked("stale-b", true)];
+    for (const target of invalid) {
+      if (kind === "missing") fs.rmSync(target, { recursive: true });
+      else fs.unlinkSync(path.join(target, ".git"));
+    }
+    const plan = await planBatchRemoval(repoRoot);
+    expect(plan.targets.filter((target) => target.invalid).map((target) => target.path)).toEqual(
+      invalid,
+    );
+    expect(await executeBatchRemoval(plan)).toEqual([clean]);
+    expect(await list(repoRoot)).toHaveLength(3);
+    for (const target of invalid) {
+      expect(fs.existsSync(target)).toBe(kind === "leftover");
+      if (kind === "leftover") {
+        expect(fs.readFileSync(path.join(target, "README.md"), "utf8")).toBe("hello");
+      }
+    }
+    expect(
+      await executeBatchRemoval(await planBatchRemoval(repoRoot), false, undefined, true),
+    ).toEqual(invalid);
+    expect(await list(repoRoot)).toHaveLength(1);
+    for (const target of invalid) expect(fs.existsSync(target)).toBe(false);
+    expect(await git(["branch", "--format=%(refname:short)"])).toContain("stale-a");
+  });
+
+  it.each([
+    "repaired",
+    "replaced",
+    "symlink",
+    "locked",
+    "foreign",
+  ])("rejects an invalid target that becomes %s before deletion", async (change) => {
+    const clean = await linked("clean");
+    const target = await linked("stale", true);
+    const marker = fs.readFileSync(path.join(target, ".git"), "utf8");
+    fs.unlinkSync(path.join(target, ".git"));
+    const plan = await planBatchRemoval(repoRoot);
+    if (change === "repaired") fs.writeFileSync(path.join(target, ".git"), marker);
+    if (change === "replaced" || change === "symlink") {
+      fs.renameSync(target, `${target}-old`);
+      if (change === "symlink") fs.symlinkSync(`${target}-old`, target);
+      else fs.cpSync(`${target}-old`, target, { recursive: true });
+    }
+    if (change === "locked") await git(["worktree", "lock", target]);
+    if (change === "foreign") await git(["init", "-b", "foreign"], target);
+    await expect(executeBatchRemoval(plan, false, undefined, true)).rejects.toThrow(
+      "fresh preview",
+    );
+    expect(fs.existsSync(clean)).toBe(true);
+    expect(fs.existsSync(target)).toBe(true);
+  });
+
+  it("rechecks Git metadata immediately before deleting an invalid folder", async () => {
+    const target = await linked("stale", true);
+    const marker = fs.readFileSync(path.join(target, ".git"), "utf8");
+    fs.unlinkSync(path.join(target, ".git"));
+    const plan = await planBatchRemoval(repoRoot);
+    await expect(
+      executeBatchRemoval(
+        plan,
+        false,
+        (progress) => {
+          if (progress.phase === "removing") fs.writeFileSync(path.join(target, ".git"), marker);
+        },
+        true,
+      ),
+    ).rejects.toThrow("fresh preview");
+    expect(fs.readFileSync(path.join(target, "README.md"), "utf8")).toBe("hello");
+    expect(await list(repoRoot)).toHaveLength(2);
+  });
+
+  it("blocks overlapping invalid targets so declining cannot delete them indirectly", async () => {
+    const outer = await linked("outer", true);
+    await addNewBranch(repoRoot, path.join(outer, "nested"), "nested", "main");
+    fs.unlinkSync(path.join(outer, ".git"));
+    await expect(planBatchRemoval(repoRoot)).rejects.toThrow("nested");
+    expect(fs.existsSync(outer)).toBe(true);
+  });
+});
+
 describe("batch inspection", () => {
   it("finds tracked, staged, nested untracked and ignored-only data without changing files", async () => {
     const clean = await linked("clean");
@@ -319,14 +402,12 @@ describe("batch inspection", () => {
   });
 
   it.each([
-    "missing",
     "uninspectable",
     "locked",
     "foreign",
   ])("blocks %s targets before mutation", async (problem) => {
     const clean = await linked("clean");
     const target = await linked("problem", true);
-    if (problem === "missing") fs.rmSync(target, { recursive: true });
     if (problem === "uninspectable") fs.writeFileSync(path.join(target, ".git"), "invalid");
     if (problem === "locked") await git(["worktree", "lock", "--reason", "keep", target]);
     if (problem === "foreign") {
@@ -336,6 +417,6 @@ describe("batch inspection", () => {
     await expect(planBatchRemoval(repoRoot)).rejects.toThrow(target);
     expect(fs.readFileSync(path.join(clean, "README.md"), "utf8")).toBe("hello");
     expect(await list(repoRoot)).toHaveLength(3);
-    expect(fs.existsSync(target)).toBe(problem !== "missing");
+    expect(fs.existsSync(target)).toBe(true);
   });
 });

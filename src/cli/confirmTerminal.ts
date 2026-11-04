@@ -1,12 +1,12 @@
-/** Read a deliberate single-key answer from stdin, never a pipe or /dev/tty fallback. */
-export function confirmTerminal(question: string): Promise<boolean> {
+/** Read a deliberate single key from stdin: true for y, false for n, null for cancellation. */
+export function confirmTerminal(question: string): Promise<boolean | null> {
   const input = process.stdin;
   if (!input.isTTY) throw new Error("Confirmation requires an interactive terminal");
   const wasRaw = input.isRaw;
   return new Promise((resolve) => {
     let settled = false;
     const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP"];
-    const finish = (accepted: boolean) => {
+    const finish = (accepted: boolean | null) => {
       if (settled) return;
       settled = true;
       input.off("data", answer);
@@ -17,16 +17,12 @@ export function confirmTerminal(question: string): Promise<boolean> {
       process.stderr.write("\n");
       resolve(accepted);
     };
-    const cancel = () => finish(false);
+    const cancel = () => finish(null);
     const answer = (chunk: Buffer) => {
       const key = chunk.toString();
       if (key === "y" || key === "Y") finish(true);
-      else if (
-        key === "n" ||
-        key === "N" ||
-        ["\x1b", "\x03", "\x04"].some((control) => key.includes(control))
-      )
-        cancel();
+      else if (key === "n" || key === "N") finish(false);
+      else if (["\x1b", "\x03", "\x04"].some((control) => key.includes(control))) cancel();
       else process.stderr.write("Use y or n; Escape cancels.\n");
     };
     input.setRawMode(true);

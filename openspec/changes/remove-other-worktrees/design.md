@@ -26,7 +26,7 @@ Alternative: branch comparison or reusing the original-repository root. Both can
 
 Add a small Git-layer batch helper containing target selection, inspection, and execution. Record original/current identities, target paths, and which targets need data-loss authorization. Use Git status with all untracked files and ignored entries included; ignored files can otherwise disappear without Git considering the checkout dirty. Preserve the existing `DIRTY` sentinel contract for single-item removal.
 
-A plan must cover every target before prompting. Inspection errors, missing/uninspectable registrations, or locked worktrees block the batch without deletion. Do not use removal attempts as dirty-state probes and do not bypass locks with repeated force flags.
+A plan must cover every target before prompting. Git-marked prunable registrations with no `.git` metadata enter a separate invalid-folder group, including missing folders. One aggregate approval allows deleting these folders and individually removing their registrations; `n` skips them while valid worktrees proceed. Other inspection errors and locks still block the batch. Reject invalid-folder symlinks, overlaps with other targets, and containment of protected worktrees. Recheck invalid-folder identity and registration before deletion. Do not use removal attempts as dirty-state probes or bypass locks with repeated force flags.
 
 Alternative: loop over `remove()` and handle errors as they arise. Rejected because clean targets could be gone before the user rejects discarding dirty targets.
 
@@ -62,7 +62,7 @@ Alternative: parallel deletion makes failure reporting and stopping less predict
 
 Route `--remove-all` before the positional-branch fast path, reject incompatible extra arguments, and do not import OpenTUI. Use Bun/Node terminal primitives rather than a new dependency. Require interactive stdin for a nonempty batch; do not accept piped approval or add `--yes`/force bypass flags. Render preview, warnings, prompts, and results to stderr, with red warnings on color-capable terminals and explicit warning text everywhere.
 
-Only explicit `y`/`Y` accepts a prompt; `n`, Escape, EOF, or interruption cancels. Other input must not advance the flow. Deliberate cancellation and an empty batch are successful no-ops; inspection, terminal, and removal errors return nonzero. Never write a navigation path. Add help, Bash/Zsh completion, and README usage together with the CLI entry point.
+Only explicit `y`/`Y` accepts a prompt. `n` cancels at removal or dirty-data approval, but skips invalid folders at their aggregate approval. Escape, EOF, or interruption always cancels the whole batch. Other input must not advance the flow. Deliberate cancellation and an empty batch are successful no-ops; inspection, terminal, and removal errors return nonzero. Never write a navigation path. Add help, Bash/Zsh completion, and README usage together with the CLI entry point.
 
 ### Add a dedicated Remove-mode shortcut
 

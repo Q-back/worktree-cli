@@ -61,9 +61,16 @@ preserved. The shell stays in its current directory.
 2. If any target has uncommitted changes, untracked files, or ignored files, see
    all affected paths and a **red data-loss warning**. Press `y` once more to approve
    discarding data across the entire dirty batch.
+3. If Git marks registrations as stale and their folders have no `.git` metadata,
+   see all invalid paths together. Their contents cannot be checked for unsaved
+   work. One additional confirmation covers **all invalid folders**, not each one.
+   `y` deletes those folders and cleans up their registrations, including entries
+   whose folders are already missing. `n` keeps them and their registrations while
+   continuing with valid worktrees. The result lists removed and skipped paths.
 
-`n`, Escape, end of input (`Ctrl+D`), or interruption (`Ctrl+C`) at either stage
-cancels the **whole batch**, including clean targets. Nothing is deleted before
+`n` at either of the first two stages cancels the **whole batch**, including clean
+and invalid targets. Escape, end of input (`Ctrl+D`), or interruption (`Ctrl+C`)
+at any confirmation also cancels the whole batch. Nothing is deleted before
 all required approvals. Only `y`/`Y` accepts; other input does not approve.
 Interactive terminal input is required: piped approvals and `--yes`/force bypasses
 are not supported. Warnings remain explicit text when color is unavailable.
@@ -72,8 +79,10 @@ Both the CLI and TUI show the current worktree path and counter while inspecting
 rechecking, and removing targets. Large worktrees can take a while; each counter
 identifies the target being processed, not a completed removal.
 
-Missing, uninspectable, locked, or unsafe nested targets block removal. A changed
-target set or newly dirty target requires a fresh preview. Execution is sequential,
+Other uninspectable targets, foreign repositories, locks, and unsafe nested targets
+still block removal. Invalid folders cannot be symlinks or overlap other targets.
+A repaired, replaced, or changed target set or newly dirty target requires a fresh
+preview. Execution is sequential,
 not an atomic filesystem transaction: an error stops further removal and reports
 completed, failed, and unattempted paths. **Earlier removals are not rolled back.**
 
@@ -119,7 +128,10 @@ screen counts affected worktrees and shows only their full paths, each labeled
 with its reasons: tracked changes, untracked files, ignored files, or "ignored
 files only" when applicable. Clean targets are hidden on this screen but will
 also be removed if confirmed. Paths and reasons wrap and remain scrollable.
-`n`, Escape, or interruption cancels before deletion and clears approvals.
+Invalid folders get the same separate, aggregate confirmation described above:
+`n` skips them; Escape or interruption cancels everything. A result screen lists
+removed and skipped paths; press `n` or Escape to close it. Declining either of the
+first two confirmations cancels before deletion and clears approvals.
 Filtering and mode changes pause during the batch flow. Plain `x` still filters;
 Enter still removes one item. The shortcut is not active in Go mode.
 
