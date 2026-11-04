@@ -336,6 +336,38 @@ describe("invalid worktrees", () => {
     expect(await list(repoRoot)).toHaveLength(2);
   });
 
+  it.each([
+    "planning",
+    "removing",
+  ])("protects a foreign bare repository during %s", async (phase) => {
+    const target = await linked("a-stale", true);
+    fs.unlinkSync(path.join(target, ".git"));
+    const clean = await linked("z-clean");
+    const bare = path.join(tmpDir, "foreign.git");
+    await git(["init", "--bare", bare]);
+    const replace = () => fs.cpSync(bare, target, { recursive: true });
+    if (phase === "planning") {
+      replace();
+      await expect(planBatchRemoval(repoRoot)).rejects.toThrow("Git metadata exists");
+    } else {
+      const plan = await planBatchRemoval(repoRoot);
+      await expect(
+        executeBatchRemoval(
+          plan,
+          false,
+          (progress) => {
+            if (progress.phase === "removing") replace();
+          },
+          true,
+        ),
+      ).rejects.toThrow("Git metadata exists");
+    }
+    expect(fs.existsSync(path.join(target, "HEAD"))).toBe(true);
+    expect(fs.existsSync(path.join(target, "objects"))).toBe(true);
+    expect(fs.existsSync(clean)).toBe(true);
+    expect(await list(repoRoot)).toHaveLength(3);
+  });
+
   it("blocks overlapping invalid targets so declining cannot delete them indirectly", async () => {
     const outer = await linked("outer", true);
     await addNewBranch(repoRoot, path.join(outer, "nested"), "nested", "main");

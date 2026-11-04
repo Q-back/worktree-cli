@@ -257,7 +257,12 @@ async function inspectInvalidTarget(targetPath: string): Promise<BatchRemovalTar
   if (directory && !directory.isDirectory()) {
     throw new Error(`Cannot inspect ${targetPath}: invalid folder is not a directory`);
   }
-  if (directory && (await optionalStat(path.join(targetPath, ".git")))) {
+  // Bare repositories keep Git metadata in the folder itself, not inside .git.
+  const bareMetadata =
+    directory &&
+    (await optionalStat(path.join(targetPath, "HEAD"))) &&
+    (await optionalStat(path.join(targetPath, "objects")));
+  if (bareMetadata || (directory && (await optionalStat(path.join(targetPath, ".git"))))) {
     throw new Error(`Cannot inspect ${targetPath}: Git metadata exists; repair the worktree first`);
   }
   return {
